@@ -44,6 +44,18 @@ node scripts/migrateMysqlToPostgres.js             # copies the data
 
 Stop writes to the old site first (maintenance mode or a paused deployment) so nothing is added during the copy, then point the deployment's `DB_*` variables at PostgreSQL. Keep the MySQL database until you have checked the new site.
 
+### Starting a fresh database (admin and demo products)
+
+If you are not copying old data, `backend/scripts/seedDemoData.js` creates a super administrator and 12 demo products across the categories (approved, no photos, so listings show the category picture):
+
+```bash
+cd backend
+node scripts/seedDemoData.js                 # admin + demo seller + demo products
+node scripts/seedDemoData.js --remove-demo   # removes the demo seller and all demo products
+```
+
+`SEED_ADMIN_EMAIL` (default `admin@jimvolt.com`), `SEED_ADMIN_PHONE` and `SEED_ADMIN_PASSWORD` (at least 12 characters) are optional; without a password a random one is printed once. Running it twice is safe: an existing admin is never changed and existing demo products are skipped. The demo seller cannot sign in and is not marked verified. Sign in at `/admin/login`, then change the password and phone number in Account settings.
+
 Configure `backend/.env`:
 
 ```env
