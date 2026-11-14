@@ -42,7 +42,29 @@ function metaTags({ title, description, canonical, image, type = 'website', robo
   return tags.join('\n')
 }
 
+// The frontend HTML shell rarely changes. Fetching it over HTTP on every page view slowed
+// listing and shared-profile pages and made them fail whenever that fetch failed.
+const TEMPLATE_TTL_MS = 5 * 60 * 1000
+let cachedTemplate = null
+let cachedTemplateAt = 0
+
 async function loadTemplate() {
+  if (cachedTemplate && Date.now() - cachedTemplateAt < TEMPLATE_TTL_MS) return cachedTemplate
+  try {
+    cachedTemplate = await readTemplate()
+    cachedTemplateAt = Date.now()
+    return cachedTemplate
+  } catch (error) {
+    if (cachedTemplate) return cachedTemplate
+    try {
+      return await fs.readFile(path.join(frontendBuild, 'index.html'), 'utf8')
+    } catch {
+      throw error
+    }
+  }
+}
+
+async function readTemplate() {
   if (process.env.JIMVOLT_FRONTEND_URL) {
     const frontendUrl = new URL('/', process.env.JIMVOLT_FRONTEND_URL)
     if (!['http:', 'https:'].includes(frontendUrl.protocol)) {

@@ -19,7 +19,8 @@ export async function getCitiesForState(state, signal) {
 export const getFeatured = async () => (await getAds({ featured: 'true', limit: 8 })).advertisements;
 export const getPromoted = async () => (await api.get('/payments/featured')).data.advertisements;
 export const trackSponsoredAd = (id, event) => api.post(`/payments/track/${id}`, { event });
-export const getDiscover = async () => (await getAds({ sort: 'random', seed: Math.floor(Math.random() * 4294967296), limit: 8 })).advertisements;
+// The seed changes every 10 minutes (not on every load) so the server and CDN can reuse the response.
+export const getDiscover = async () => (await getAds({ sort: 'random', seed: Math.floor(Date.now() / 600000), limit: 8 })).advertisements;
 export const getRecent = async () => (await getAds({ sort: 'newest', limit: 8 })).advertisements;
 export const getPopular = async () => (await getAds({ sort: 'popular', limit: 4 })).advertisements;
 

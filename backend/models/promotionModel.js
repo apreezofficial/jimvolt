@@ -320,7 +320,15 @@ async function pauseAdvertisementPromotions(connection, advertisementId) {
   )
 }
 
+// Expiring promotions is a write. Running it on every public page view made the
+// homepage featured query wait on row locks, so run it at most once a minute.
+const EXPIRE_INTERVAL_MS = 60 * 1000
+let lastExpiryRun = 0
+
 async function expireDuePromotions() {
+  const now = Date.now()
+  if (now - lastExpiryRun < EXPIRE_INTERVAL_MS) return 0
+  lastExpiryRun = now
   const [result] = await pool.execute(
     `UPDATE promotions SET status = 'expired'
      WHERE status = 'active' AND expires_at <= CURRENT_TIMESTAMP`,

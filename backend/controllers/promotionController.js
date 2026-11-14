@@ -30,6 +30,7 @@ async function packages(req, res) {
 }
 
 async function featured(req, res) {
+  res.set('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=300')
   return res.json({ advertisements: await promotionModel.findFeaturedAdvertisements() })
 }
 

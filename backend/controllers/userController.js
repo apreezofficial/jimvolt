@@ -27,6 +27,7 @@ function getProfile(req, res) {
 }
 
 async function getVerifiedSellers(req, res) {
+  res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600')
   return res.json({ sellers: await userModel.findVerifiedSellers() })
 }
 

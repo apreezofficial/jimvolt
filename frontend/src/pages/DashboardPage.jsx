@@ -99,10 +99,13 @@ export default function DashboardPage() {
           </Link>
           <button type="button" className="seller-drawer-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={20} /></button>
         </div>
-        <div className="seller-mini-profile">
+        <Link to="/profile" className="seller-mini-profile" onClick={() => setMobileOpen(false)} aria-label="Open your profile">
           <UserAvatar src={user?.profile_image} name={user?.full_name} className="seller-mini-avatar" />
-          <div><strong>{user?.full_name || 'Seller'} <VerifiedBusinessBadge verified={Boolean(user?.is_verified)} /></strong><small>Seller account</small></div>
-        </div>
+          <div>
+            <strong>{user?.full_name || 'Seller'} <VerifiedBusinessBadge verified={Boolean(user?.is_verified)} /></strong>
+            <small>{user?.email || (user?.is_verified ? 'Verified seller' : 'Awaiting verification')}</small>
+          </div>
+        </Link>
         <nav className="dashboard-nav" aria-label="Seller dashboard">
           {navigation.map(({ label, path, icon: Icon }) => (
             <NavLink key={label} to={path} end={path === '/dashboard'} onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive || (path === '/dashboard/analytics' && isAnalyticsPath) ? 'active' : ''}>

@@ -32,6 +32,8 @@ async function list(req, res) {
     adModel.countPublic({ where, values }),
   ])
   const totalPages = Math.ceil(total / limit)
+  // Public listings carry no per-user data, so browsers and the CDN can reuse them briefly.
+  res.set('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=300')
   return res.json({
     advertisements,
     totalResults: total,
@@ -53,6 +55,7 @@ async function cities(req, res) {
 }
 
 async function popularLocations(req, res) {
+  res.set('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600')
   return res.json({ locations: await adModel.findPopularLocations() })
 }
 

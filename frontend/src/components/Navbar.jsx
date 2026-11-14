@@ -132,7 +132,16 @@ export default function Navbar() {
             <Link to="/post-ad" className="btn btn-green" onClick={() => setOpen(false)}><Plus size={16} /> Post your ad</Link>
           </nav>
           <button className="burger" onClick={() => setOpen(!open)} aria-label="Toggle menu" aria-expanded={open}>{open ? <X size={22} /> : <Menu size={22} />}</button>
-        </> : <Link className="btn btn-white guest-sign-in" to="/login"><User size={16} /> Sign in</Link>}
+        </> : <>
+          <nav className={`nav-links ${open ? 'open' : ''}`} aria-label="Main">
+            <NavLink to="/ads" onClick={() => setOpen(false)}>Browse</NavLink>
+            <NavLink to="/sellers" onClick={() => setOpen(false)}>Sellers</NavLink>
+            <NavLink to="/saved" onClick={() => setOpen(false)}><Heart size={16} /> Saved{favoriteCount > 0 && <span className="nav-message-count nav-favorite-count">{favoriteCount > 99 ? '99+' : favoriteCount}</span>}</NavLink>
+            <Link to="/login" className="btn btn-white guest-sign-in" onClick={() => setOpen(false)}><User size={16} /> Sign in</Link>
+            <Link to="/register" className="btn btn-green" onClick={() => setOpen(false)}><Plus size={16} /> Create account</Link>
+          </nav>
+          <button className="burger" onClick={() => setOpen(!open)} aria-label="Toggle menu" aria-expanded={open}>{open ? <X size={22} /> : <Menu size={22} />}</button>
+        </>}
 
       </div>
     </header>
