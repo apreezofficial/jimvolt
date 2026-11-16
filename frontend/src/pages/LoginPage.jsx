@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Eye, EyeOff, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { GOOGLE_SIGN_IN_URL, googleErrorMessage } from '../services/googleAuth.js';
-import GoogleIcon from '../components/GoogleIcon.jsx';
+import { googleErrorMessage } from '../services/googleAuth.js';
+import GoogleSignInButton from '../components/GoogleSignInButton.jsx';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -93,9 +93,7 @@ export default function LoginPage() {
         </form>
 
         <div className="auth-divider"><span>or</span></div>
-        <a className="btn btn-white auth-google" href={GOOGLE_SIGN_IN_URL}>
-          <GoogleIcon /> Continue with Google
-        </a>
+        <GoogleSignInButton text="signin_with" onError={(text) => setNotice({ type: 'error', text })} />
 
         <p className="auth-footer">
           New to Jimvolt? <Link to="/register">Create account</Link>

@@ -36,3 +36,8 @@ test('authorization URL requests the code flow with the state value and email sc
     if (original.redirect === undefined) delete process.env.GOOGLE_REDIRECT_URI; else process.env.GOOGLE_REDIRECT_URI = original.redirect
   }
 })
+
+test('ID token verification is exported for the popup flow', () => {
+  assert.equal(typeof googleOAuth.verifyIdToken, 'function')
+  return assert.rejects(() => googleOAuth.verifyIdToken(''), /Missing Google credential/)
+})

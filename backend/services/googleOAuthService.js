@@ -5,8 +5,32 @@ const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
 const USERINFO_ENDPOINT = 'https://openidconnect.googleapis.com/v1/userinfo'
 
+const TOKENINFO_ENDPOINT = 'https://oauth2.googleapis.com/tokeninfo'
+
 function isGoogleConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+}
+
+/**
+ * Checks a Google ID token from the browser button. Google validates the
+ * signature and expiry; we also require that it was issued to this app
+ * (aud matches GOOGLE_CLIENT_ID) by a Google issuer.
+ */
+async function verifyIdToken(idToken) {
+  if (!idToken) throw new Error('Missing Google credential.')
+  const response = await fetch(`${TOKENINFO_ENDPOINT}?id_token=${encodeURIComponent(idToken)}`)
+  if (!response.ok) throw new Error('Google rejected the ID token.')
+  const claims = await response.json()
+
+  const issuerOk = claims.iss === 'accounts.google.com' || claims.iss === 'https://accounts.google.com'
+  if (!issuerOk || claims.aud !== process.env.GOOGLE_CLIENT_ID) throw new Error('Google token was issued for another app.')
+
+  return {
+    sub: String(claims.sub || ''),
+    email: String(claims.email || '').toLowerCase(),
+    emailVerified: claims.email_verified === 'true' || claims.email_verified === true,
+    name: String(claims.name || '').trim(),
+  }
 }
 
 function redirectUri() {
@@ -56,4 +80,4 @@ async function fetchProfileFromCode(code) {
   }
 }
 
-module.exports = { buildAuthorizationUrl, fetchProfileFromCode, isGoogleConfigured }
+module.exports = { buildAuthorizationUrl, fetchProfileFromCode, isGoogleConfigured, verifyIdToken }

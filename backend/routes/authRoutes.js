@@ -96,5 +96,11 @@ const googleAuthController = require('../controllers/googleAuthController')
 
 router.get('/google', googleAuthController.googleStart)
 router.get('/google/callback', asyncHandler(googleAuthController.googleCallback))
+router.post(
+  '/google/credential',
+  authRateLimit,
+  body('credential').isString().isLength({ min: 20, max: 4096 }).withMessage('Google sign-in is missing its credential.'),
+  asyncHandler(googleAuthController.googleCredential),
+)
 
 module.exports = router
