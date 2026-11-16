@@ -33,6 +33,27 @@ async function findByPhone(phone) {
   return rows[0] || null
 }
 
+/** Looks up by username, returning the password hash for login checks. */
+async function findByUsername(username) {
+  const [rows] = await pool.execute(
+    `SELECT ${publicFields}, password FROM users WHERE username = ? LIMIT 1`,
+    [username],
+  )
+  return rows[0] || null
+}
+
+async function findByGoogleSub(googleSub) {
+  const [rows] = await pool.execute(`SELECT ${publicFields} FROM users WHERE google_sub = ? LIMIT 1`, [googleSub])
+  return rows[0] || null
+}
+
+async function linkGoogleSub(id, googleSub) {
+  await pool.execute(
+    'UPDATE users SET google_sub = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [googleSub, id],
+  )
+}
+
 async function findByEmailOrPhone(value) {
   const normalized = String(value).trim().toLowerCase()
   const phone = normalized.includes('@') ? null : normalized
@@ -296,6 +317,9 @@ async function removeFavorite(userId, advertisementId) {
 }
 
 module.exports = {
+  findByUsername,
+  findByGoogleSub,
+  linkGoogleSub,
   findPublicByUsername,
   isUsernameTaken,
   setUsername,

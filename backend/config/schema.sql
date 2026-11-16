@@ -474,3 +474,7 @@ BEGIN
     EXECUTE format('CREATE TRIGGER trg_%1$s_updated_at BEFORE UPDATE ON %1$I FOR EACH ROW EXECUTE FUNCTION set_updated_at()', t);
   END LOOP;
 END $$;
+
+-- Google sign-in: the stable Google account id ("sub") for each linked member.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users (google_sub);

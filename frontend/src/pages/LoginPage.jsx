@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Eye, EyeOff, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { GOOGLE_SIGN_IN_URL, googleErrorMessage } from '../services/googleAuth.js';
+import GoogleIcon from '../components/GoogleIcon.jsx';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -11,7 +13,12 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState(() => location.state?.notice ? { type: 'success', text: location.state.notice } : null);
+  const [notice, setNotice] = useState(() => {
+    if (location.state?.notice) return { type: 'success', text: location.state.notice };
+    const oauthError = new URLSearchParams(location.search).get('oauth_error');
+    const text = oauthError ? googleErrorMessage(oauthError) : null;
+    return text ? { type: 'error', text } : null;
+  });
   const redirectTo = location.state?.from || '/dashboard';
 
   useEffect(() => {
@@ -56,8 +63,8 @@ export default function LoginPage() {
 
         <form className="auth-form" onSubmit={submit}>
           <label className="field">
-            <span>Email or phone</span>
-            <input name="identifier" value={form.identifier} onChange={updateField} placeholder="you@example.com or 0803..." />
+            <span>Email, phone or username</span>
+            <input name="identifier" value={form.identifier} onChange={updateField} placeholder="you@example.com, 0803... or username" autoComplete="username" />
           </label>
 
           <label className="field field-password">
@@ -84,6 +91,11 @@ export default function LoginPage() {
             {loading ? <><LoaderCircle size={16} className="spin" /> Signing in...</> : 'Sign in'}
           </button>
         </form>
+
+        <div className="auth-divider"><span>or</span></div>
+        <a className="btn btn-white auth-google" href={GOOGLE_SIGN_IN_URL}>
+          <GoogleIcon /> Continue with Google
+        </a>
 
         <p className="auth-footer">
           New to Jimvolt? <Link to="/register">Create account</Link>

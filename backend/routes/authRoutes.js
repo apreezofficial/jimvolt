@@ -56,7 +56,7 @@ router.put(
 router.post(
   '/login',
   authRateLimit,
-  body('identifier').trim().isLength({ min: 3, max: 120 }).withMessage('Enter your email or phone number.'),
+  body('identifier').trim().isLength({ min: 3, max: 120 }).withMessage('Enter your email, phone number or username.'),
   body('password').isString().isLength({ min: 1, max: 72 }).withMessage('Password must be between 1 and 72 characters.'),
   asyncHandler(authController.login),
 )
@@ -91,5 +91,10 @@ router.post(
 
 router.get('/me', authenticate, asyncHandler(authController.me))
 router.post('/logout', authenticate, asyncHandler(authController.logout))
+
+const googleAuthController = require('../controllers/googleAuthController')
+
+router.get('/google', googleAuthController.googleStart)
+router.get('/google/callback', asyncHandler(googleAuthController.googleCallback))
 
 module.exports = router

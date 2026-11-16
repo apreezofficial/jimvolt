@@ -181,13 +181,27 @@ async function setUsername(req, res) {
   return res.json({ message: 'Username updated.', username: normalized, user: sanitizeUser(user) })
 }
 
+/**
+ * Finds the member for a login identifier: an email, a Nigerian phone number,
+ * or a username. Phone numbers are tried first, then usernames.
+ */
+async function findLoginUser(rawIdentifier) {
+  const identifier = rawIdentifier.trim()
+  if (!identifier) return null
+  if (identifier.includes('@')) return userModel.findByEmail(identifier.toLowerCase())
+
+  const phone = normalizeNigerianPhone(identifier)
+  if (isValidNigerianPhone(phone)) {
+    const byPhone = await userModel.findByPhone(phone)
+    if (byPhone) return byPhone
+  }
+  return userModel.findByUsername(normalizeUsername(identifier))
+}
+
 async function login(req, res) {
   checkValidation(req)
 
-  const identifier = String(req.body.identifier || '').trim()
-  const user = identifier.includes('@')
-    ? await userModel.findByEmail(identifier.toLowerCase())
-    : await userModel.findByPhone(normalizeNigerianPhone(identifier))
+  const user = await findLoginUser(String(req.body.identifier || ''))
 
   const passwordMatches = user && await bcrypt.compare(req.body.password, user.password)
   if (!passwordMatches || user.account_status !== 'active') {
@@ -285,4 +299,4 @@ async function logout(req, res) {
   return res.json({ message: 'You have been logged out.' })
 }
 
-module.exports = { adminLogin, checkUsername, forgotPassword, login, logout, me, register, resetPassword, setUsername, verifyEmail }
+module.exports = { adminLogin, checkUsername, createToken, forgotPassword, login, logout, me, register, resetPassword, setUsername, verifyEmail }

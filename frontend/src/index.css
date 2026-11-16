@@ -1338,3 +1338,28 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
 .card-rating { display: flex; align-items: center; gap: 4px; margin: 4px 0 0; font-size: .82rem; color: #B45309; }
 .card-rating strong { color: var(--text); }
 .card-rating span { color: var(--muted); }
+
+/* Google sign-in on the login and sign-up pages */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+.auth-google {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+}

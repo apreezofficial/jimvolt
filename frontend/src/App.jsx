@@ -1,3 +1,4 @@
+import GoogleCompletePage from './pages/GoogleCompletePage.jsx';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout.jsx';
 import AdminLayout from './layouts/AdminLayout.jsx';
@@ -39,6 +40,7 @@ export default function App() {
       <Routes>
         <Route path="/tests/bachs" element={<BachsTestPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/auth/google/complete" element={<GoogleCompletePage />} />
         <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
