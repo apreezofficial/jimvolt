@@ -33,16 +33,22 @@ async function verifyIdToken(idToken) {
   }
 }
 
-function redirectUri() {
+/**
+ * The callback must be served by this API, and it must be exactly the URI
+ * registered in Google Cloud. By default it is the host that received the
+ * sign-in request, so Google returns the browser to the API, not the frontend.
+ * GOOGLE_REDIRECT_URI overrides it when set.
+ */
+function redirectUri(req) {
   if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI
-  const siteUrl = process.env.PUBLIC_SITE_URL || process.env.FRONTEND_URL || 'http://localhost:5173'
-  return `${siteUrl.replace(/\/$/, '')}/api/auth/google/callback`
+  const proto = req.get('x-forwarded-proto') || req.protocol
+  return `${proto}://${req.get('host')}/api/auth/google/callback`
 }
 
-function buildAuthorizationUrl(state) {
+function buildAuthorizationUrl(state, req) {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri(),
+    redirect_uri: redirectUri(req),
     response_type: 'code',
     scope: 'openid email profile',
     state,
@@ -51,7 +57,7 @@ function buildAuthorizationUrl(state) {
   return `${AUTH_ENDPOINT}?${params.toString()}`
 }
 
-async function fetchProfileFromCode(code) {
+async function fetchProfileFromCode(code, req) {
   const tokenResponse = await fetch(TOKEN_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -59,7 +65,7 @@ async function fetchProfileFromCode(code) {
       code,
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: redirectUri(),
+      redirect_uri: redirectUri(req),
       grant_type: 'authorization_code',
     }),
   })

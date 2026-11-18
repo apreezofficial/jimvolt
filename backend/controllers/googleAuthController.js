@@ -80,7 +80,7 @@ function googleStart(req, res) {
   const state = crypto.randomBytes(24).toString('base64url')
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
   res.setHeader('Set-Cookie', `${STATE_COOKIE}=${state}; Path=/api/auth/google; HttpOnly; SameSite=Lax; Max-Age=600${secure}`)
-  return res.redirect(googleOAuth.buildAuthorizationUrl(state))
+  return res.redirect(googleOAuth.buildAuthorizationUrl(state, req))
 }
 
 async function googleCallback(req, res) {
@@ -94,7 +94,7 @@ async function googleCallback(req, res) {
 
   let profile
   try {
-    profile = await googleOAuth.fetchProfileFromCode(String(req.query.code))
+    profile = await googleOAuth.fetchProfileFromCode(String(req.query.code), req)
   } catch (error) {
     console.error('[auth] Google sign-in failed:', error.message)
     return failTo(res, 'google_failed')

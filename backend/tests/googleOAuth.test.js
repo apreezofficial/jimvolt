@@ -21,14 +21,14 @@ test('authorization URL requests the code flow with the state value and email sc
   const original = { id: process.env.GOOGLE_CLIENT_ID, site: process.env.PUBLIC_SITE_URL, redirect: process.env.GOOGLE_REDIRECT_URI }
   try {
     process.env.GOOGLE_CLIENT_ID = 'client-id'
-    process.env.PUBLIC_SITE_URL = 'https://jimvolt.com/'
     delete process.env.GOOGLE_REDIRECT_URI
-    const url = new URL(googleOAuth.buildAuthorizationUrl('state-123'))
+    const req = { protocol: 'http', get: (name) => (name === 'host' ? 'api.jimvolt.com' : undefined) }
+    const url = new URL(googleOAuth.buildAuthorizationUrl('state-123', req))
     assert.equal(url.origin + url.pathname, 'https://accounts.google.com/o/oauth2/v2/auth')
     assert.equal(url.searchParams.get('client_id'), 'client-id')
     assert.equal(url.searchParams.get('response_type'), 'code')
     assert.equal(url.searchParams.get('state'), 'state-123')
-    assert.equal(url.searchParams.get('redirect_uri'), 'https://jimvolt.com/api/auth/google/callback')
+    assert.equal(url.searchParams.get('redirect_uri'), 'http://api.jimvolt.com/api/auth/google/callback')
     assert.ok(url.searchParams.get('scope').split(' ').includes('email'))
   } finally {
     if (original.id === undefined) delete process.env.GOOGLE_CLIENT_ID; else process.env.GOOGLE_CLIENT_ID = original.id
