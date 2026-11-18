@@ -1363,3 +1363,16 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
   gap: 10px;
   text-decoration: none;
 }
+
+/* Contact form (Voiceform iframe) */
+.contact-form-section { margin: 16px 0; }
+.contact-form-frame {
+  width: 100%;
+  min-height: 640px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+}
+@media (max-width: 480px) {
+  .contact-form-frame { min-height: 720px; }
+}

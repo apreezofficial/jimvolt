@@ -148,6 +148,28 @@ const pages = {
   },
 };
 
+// Contact form hosted by Voiceform. Set VITE_VOICEFORM_URL to the form's share link.
+function ContactForm({ supportEmail }) {
+  const formUrl = import.meta.env.VITE_VOICEFORM_URL;
+  if (formUrl) {
+    return (
+      <section className="contact-form-section">
+        <iframe
+          title="Contact Jimvolt support form"
+          src={formUrl}
+          className="contact-form-frame"
+          loading="lazy"
+          allow="microphone; camera"
+        />
+        <p className="muted">Trouble with the form? <a className="link" href={supportEmail ? `mailto:${supportEmail}` : formUrl} target="_blank" rel="noreferrer">{supportEmail ? `Email ${supportEmail}` : 'Open the form in a new tab'}</a>.</p>
+      </section>
+    );
+  }
+  return supportEmail
+    ? <a className="btn btn-primary" href={`mailto:${supportEmail}?subject=Jimvolt%20marketplace%20support`}>Email {supportEmail}</a>
+    : <p className="notice error">The contact form is not configured. Set VITE_VOICEFORM_URL to publish it.</p>;
+}
+
 export default function InformationPage() {
   const { pathname } = useLocation();
   const page = pages[pathname] || pages['/safety'];
@@ -168,9 +190,7 @@ export default function InformationPage() {
         ))}
         {pathname === '/refund-policy' && <p>Questions about a payment? <Link className="link" to="/contact">Contact support</Link>.</p>}
         {pathname === '/help' && <p>Still need help? <Link className="link" to="/contact">Contact support</Link>.</p>}
-        {pathname === '/contact' && (supportEmail
-          ? <a className="btn btn-primary" href={`mailto:${supportEmail}?subject=Jimvolt%20marketplace%20support`}>Email {supportEmail}</a>
-          : <p className="notice error">Support email is not configured. Set VITE_SUPPORT_EMAIL to publish the support contact.</p>)}
+        {pathname === '/contact' && <ContactForm supportEmail={supportEmail} />}
         <Link className="link" to="/">Return to Jimvolt</Link>
       </article>
     </div>
