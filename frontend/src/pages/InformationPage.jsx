@@ -101,7 +101,7 @@ const pages = {
       {
         heading: 'What this policy covers',
         points: [
-          'Promotion packages (Boost, Featured, Premium and Premium Plus) paid through our payment partner, Bachs.',
+          'Promotion packages (Boost, Featured, Premium and Premium Plus) paid through our payment partner, Paystack.',
           'It does not cover purchases between buyers and sellers. Jimvolt does not take payment for products, hold buyer funds, or ship goods, so refunds for a product are agreed directly with the seller.',
         ],
       },
@@ -134,7 +134,7 @@ const pages = {
       {
         heading: 'How refunds are paid',
         points: [
-          'Approved refunds go back to the original payment method through Bachs.',
+          'Approved refunds go back to the original payment method through Paystack.',
           'Your bank or card provider may take several business days to show the money. We cannot speed up that step.',
           'If a refund is for part of a promotion, the amount is worked out from the unused days.',
         ],

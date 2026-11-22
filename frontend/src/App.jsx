@@ -32,14 +32,12 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import AccountSettingsPage from './pages/AccountSettingsPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import PricingPage from './pages/PricingPage.jsx';
-import BachsTestPage from './pages/BachsTestPage.jsx';
 import SellerSlugPage from './pages/SellerSlugPage.jsx';
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/tests/bachs" element={<BachsTestPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/auth/google/complete" element={<GoogleCompletePage />} />
         <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>}>

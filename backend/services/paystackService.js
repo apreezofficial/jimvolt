@@ -62,4 +62,35 @@ async function verifyTransaction(reference) {
   return requestPaystack(`/transaction/verify/${encodeURIComponent(reference)}`, { method: 'GET' })
 }
 
-module.exports = { initializeTransaction, toKobo, verifyTransaction }
+// Starts a Paystack checkout for a promotion. The Paystack reference doubles as the checkout id.
+async function createPromotionCheckout({ email, reference, amount, callbackUrl, promotionId }) {
+  const transaction = await initializeTransaction({
+    email,
+    reference,
+    amount,
+    callbackUrl,
+    metadata: { promotionId, paymentReference: reference },
+  })
+  return {
+    checkout_id: reference,
+    checkout_url: transaction.authorization_url,
+    expires_at: null,
+  }
+}
+
+// Reads the transaction from Paystack and maps it to the checkout shape promotionModel verifies.
+async function getCheckout(reference) {
+  const data = await verifyTransaction(reference)
+  const succeeded = data.status === 'success'
+  const failed = ['failed', 'abandoned', 'reversed'].includes(data.status)
+  return {
+    checkout_id: reference,
+    reference,
+    payment_status: succeeded ? 'paid' : 'unpaid',
+    status: succeeded ? 'completed' : failed ? 'expired' : 'pending',
+    amount: (Number(data.amount) / 100).toFixed(2),
+    currency: data.currency,
+  }
+}
+
+module.exports = { createPromotionCheckout, getCheckout, initializeTransaction, toKobo, verifyTransaction }

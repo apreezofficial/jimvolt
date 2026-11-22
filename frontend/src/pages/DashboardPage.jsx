@@ -409,22 +409,22 @@ function PromotionManagement({ setToast }) {
     let settled = false;
     setCheckingPayment(true);
     setCheckoutMessage(searchParams.get('checkout_cancelled') === '1'
-      ? 'Checkout was closed before confirmation. Payment status is being checked with Bachs.'
-      : 'Checking your payment status with Bachs...');
+      ? 'Checkout was closed before confirmation. Payment status is being checked with Paystack.'
+      : 'Checking your payment status with Paystack...');
     setError('');
     verifyPromotion(reference)
       .then(async ({ data }) => {
         if (!active) return;
         if (data.status === 'succeeded') {
           settled = true;
-          setCheckoutMessage('Bachs confirmed your payment. Your promotion status has been updated.');
+          setCheckoutMessage('Paystack confirmed your payment. Your promotion status has been updated.');
           const { data: promotionData } = await getMyPromotions();
           if (active) setPromotions(promotionData.promotions || []);
         } else if (data.status === 'failed') {
           settled = true;
           setCheckoutMessage(data.message || 'This checkout expired before payment was confirmed.');
         } else {
-          setCheckoutMessage('Payment is still processing. Promotions activate only after Bachs confirms payment.');
+          setCheckoutMessage('Payment is still processing. Promotions activate only after Paystack confirms payment.');
         }
       })
       .catch((requestError) => {
@@ -459,9 +459,9 @@ function PromotionManagement({ setToast }) {
         packageId: Number(selectedPackage),
       });
       window.location.assign(data.authorizationUrl);
-      setToast('Continue securely on Bachs to complete your promotion payment.');
+      setToast('Continue securely on Paystack to complete your promotion payment.');
     } catch (requestError) {
-      setError(messageFrom(requestError, 'Could not start Bachs checkout. Check your selections and try again.'));
+      setError(messageFrom(requestError, 'Could not start Paystack checkout. Check your selections and try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -473,7 +473,7 @@ function PromotionManagement({ setToast }) {
   return <section className="panel dashboard-panel promotion-panel">
     <div className="panel-header"><div><h2>Promote Your Products</h2><p className="muted">Increase visibility with a paid marketplace placement.</p></div></div>
     {error && <div className="notice error" role="alert">{error}</div>}
-    {checkoutMessage && <div className={`notice ${checkoutMessage.startsWith('Bachs confirmed') ? 'success' : 'promotion-notice'}`} role="status">{checkoutMessage}</div>}
+    {checkoutMessage && <div className={`notice ${checkoutMessage.startsWith('Paystack confirmed') ? 'success' : 'promotion-notice'}`} role="status">{checkoutMessage}</div>}
     {searchParams.get('payment_reference') && <button type="button" className="btn btn-white" disabled={checkingPayment} onClick={() => setPaymentRetry((value) => value + 1)}>{checkingPayment ? 'Checking payment...' : 'Check payment status again'}</button>}
     {loading ? <div className="loading-card" role="status">Loading promotion options...</div> : (
       <>
@@ -509,8 +509,8 @@ function PromotionManagement({ setToast }) {
                 <div><small>Total</small><strong>{formatNaira(selectedPackageInfo.price)}</strong></div>
               </div>
             )}
-            <p className="promotion-checkout-note">Payment is securely processed by Bachs. Your promotion activates only after payment is confirmed.</p>
-            <button type="button" className="btn btn-primary" disabled={!selectedAd || !selectedPackage || !packages.length || submitting} onClick={submitPromotion}>{submitting ? 'Preparing secure checkout...' : 'Continue to Bachs checkout'}</button>
+            <p className="promotion-checkout-note">Payment is securely processed by Paystack. Your promotion activates only after payment is confirmed.</p>
+            <button type="button" className="btn btn-primary" disabled={!selectedAd || !selectedPackage || !packages.length || submitting} onClick={submitPromotion}>{submitting ? 'Preparing secure checkout...' : 'Continue to Paystack checkout'}</button>
           </div>
         </div>
         <div className="promotion-listings">

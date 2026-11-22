@@ -194,13 +194,6 @@ ul { list-style: none; margin: 0; padding: 0; }
 .stat-card p { margin: 0; color: var(--muted); font-size: .8rem; }
 .stat-card strong { display: block; font-size: 1.5rem; margin-top: 4px; }
 .panel { padding: 20px; }
-.bachs-test-page { max-width: 720px; }
-.bachs-test-panel { display: grid; gap: 16px; background: #fff; border: 1px solid var(--line); border-radius: var(--r); }
-.bachs-test-panel h1 { font-size: clamp(1.7rem, 4vw, 2.2rem); }
-.bachs-test-form { display: grid; gap: 16px; max-width: 420px; }
-.bachs-test-form .btn { justify-content: center; }
-.bachs-test-form .btn:disabled { cursor: wait; opacity: .7; }
-.bachs-test-note { margin: 0; color: var(--muted); font-size: .88rem; }
 .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }

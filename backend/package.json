@@ -15,7 +15,6 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@bachs/sdk": "^2.0.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
