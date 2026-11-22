@@ -1,7 +1,8 @@
 const { randomUUID } = require('node:crypto')
 const { validationResult } = require('express-validator')
 const promotionModel = require('../models/promotionModel')
-const bachsService = require('../services/bachsService')
+const paystackService = require('../services/paystackService')
+const { verifyPaystackSignature } = require('../utils/paystackWebhook')
 
 function checkValidation(req) {
   const errors = validationResult(req)
@@ -46,7 +47,7 @@ async function myPromotions(req, res) {
 
 async function initialize(req, res) {
   checkValidation(req)
-  if (!process.env.BACHS_API_KEY) {
+  if (!paystackService.getSecretKey()) {
     const error = new Error('Promotion checkout is temporarily unavailable. Please try again later.')
     error.statusCode = 503
     throw error
@@ -61,12 +62,12 @@ async function initialize(req, res) {
 
   let checkout
   try {
-    checkout = await bachsService.createPromotionCheckout({
+    checkout = await paystackService.createPromotionCheckout({
+      email: req.user.email,
       reference,
       amount: pending.package.price,
       promotionId: pending.id,
-      successUrl: callbackUrl(reference),
-      cancelUrl: callbackUrl(reference, true),
+      callbackUrl: callbackUrl(reference),
     })
   } catch (error) {
     if (!error.outcomeUnknown) await promotionModel.failPendingPayment(reference)
@@ -90,9 +91,9 @@ async function verify(req, res) {
     return res.json({ status: 'succeeded', promotionStatus: payment.promotion_status, promotionId: payment.promotion_id })
   }
   if (!payment.provider_checkout_id) {
-    return res.json({ status: 'pending', message: 'Bachs has not confirmed this payment yet.' })
+    return res.json({ status: 'pending', message: 'Paystack has not confirmed this payment yet.' })
   }
-  const checkout = await bachsService.getCheckout(payment.provider_checkout_id)
+  const checkout = await paystackService.getCheckout(payment.provider_checkout_id)
   if (checkout.payment_status === 'paid') {
     const result = await promotionModel.completeVerifiedPayment(payment.provider_checkout_id, checkout)
     return res.json({
@@ -108,39 +109,39 @@ async function verify(req, res) {
   return res.json({
     status: checkout.status === 'expired' ? 'failed' : 'pending',
     message: checkout.status === 'expired'
-      ? 'This checkout expired before Bachs confirmed payment.'
-      : 'Bachs has not confirmed this payment yet.',
+      ? 'This checkout expired before Paystack confirmed payment.'
+      : 'Paystack has not confirmed this payment yet.',
   })
 }
 
 async function webhook(req, res) {
+  const signature = req.headers['x-paystack-signature']
+  if (!verifyPaystackSignature(req.rawBody, signature, paystackService.getSecretKey())) {
+    return res.status(401).json({ message: 'Paystack webhook signature could not be verified.' })
+  }
+
   let event
   try {
-    event = bachsService.constructEvent(req.rawBody, req.headers)
-  } catch (error) {
-    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message })
-    return res.status(401).json({ message: 'Bachs webhook signature could not be verified.' })
+    event = JSON.parse(req.rawBody.toString('utf8'))
+  } catch {
+    return res.status(400).json({ message: 'Invalid webhook payload.' })
   }
-  const checkoutId = event.data?.checkout_id
-  if (!checkoutId) return res.json({ received: true })
+  const reference = event.data?.reference
+  if (!reference) return res.json({ received: true })
+  // Paystack events carry no event id, so the transaction id plus event type identifies one delivery.
+  const eventRecord = { id: `${event.event}:${event.data?.id}`, type: event.event }
 
-  if (event.type === 'checkout.expired') {
-    await promotionModel.failPendingPaymentByCheckoutId(checkoutId, event)
+  if (event.event === 'charge.failed') {
+    await promotionModel.failPendingPaymentByCheckoutId(reference, eventRecord)
     return res.json({ received: true })
   }
-  if (event.type === 'collection.failed') return res.json({ received: true })
+  if (event.event !== 'charge.success') return res.json({ received: true })
 
-  const isSuccessfulCollection = event.type === 'collection.succeeded' && event.data?.status === 'SUCCEEDED'
-  const isPaidCheckout = event.type === 'checkout.completed' && event.data?.payment_status === 'paid'
-  if (!isSuccessfulCollection && !isPaidCheckout) return res.json({ received: true })
-
-  const payment = await promotionModel.getPaymentByCheckoutId(checkoutId)
+  const payment = await promotionModel.getPaymentByCheckoutId(reference)
   if (!payment) return res.json({ received: true })
-  const checkout = await bachsService.getCheckout(checkoutId)
-  await promotionModel.completeVerifiedPayment(checkoutId, checkout, {
-    id: event.id,
-    type: event.type,
-  })
+  // Confirm with Paystack directly rather than trusting the webhook body alone.
+  const checkout = await paystackService.getCheckout(reference)
+  await promotionModel.completeVerifiedPayment(reference, checkout, eventRecord)
   return res.json({ received: true })
 }
 

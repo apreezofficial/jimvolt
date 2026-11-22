@@ -14,11 +14,36 @@ function toKobo(amount) {
   return Number(value)
 }
 
-function secretKey() {
-  if (!process.env.PAYSTACK_SECRET_KEY) {
-    throw serviceError('Online payments are not configured.', 503)
+/**
+ * Resolves the Paystack secret key for the configured mode.
+ *
+ *   PAYSTACK_MODE=test  -> PAYSTACK_TEST_SECRET_KEY (sk_test_...)
+ *   PAYSTACK_MODE=live  -> PAYSTACK_LIVE_SECRET_KEY (sk_live_...)
+ *
+ * PAYSTACK_SECRET_KEY is used when the mode-specific key is not set. Paystack
+ * decides test or live from the key itself, so a key that does not match the
+ * chosen mode is rejected instead of silently charging the wrong environment.
+ */
+function paystackMode() {
+  return String(process.env.PAYSTACK_MODE || '').trim().toLowerCase() === 'live' ? 'live' : 'test'
+}
+
+function getSecretKey() {
+  const mode = paystackMode()
+  const key = (mode === 'live' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_TEST_SECRET_KEY)
+    || process.env.PAYSTACK_SECRET_KEY
+  if (!key) return null
+  const expectedPrefix = mode === 'live' ? 'sk_live_' : 'sk_test_'
+  if (!key.startsWith(expectedPrefix)) {
+    throw serviceError(`PAYSTACK_MODE is ${mode}, but the configured Paystack key is not a ${expectedPrefix}... key.`, 503)
   }
-  return process.env.PAYSTACK_SECRET_KEY
+  return key
+}
+
+function secretKey() {
+  const key = getSecretKey()
+  if (!key) throw serviceError('Online payments are not configured.', 503)
+  return key
 }
 
 async function requestPaystack(path, options = {}) {
@@ -62,4 +87,35 @@ async function verifyTransaction(reference) {
   return requestPaystack(`/transaction/verify/${encodeURIComponent(reference)}`, { method: 'GET' })
 }
 
-module.exports = { initializeTransaction, toKobo, verifyTransaction }
+// Starts a Paystack checkout for a promotion. The Paystack reference doubles as the checkout id.
+async function createPromotionCheckout({ email, reference, amount, callbackUrl, promotionId }) {
+  const transaction = await initializeTransaction({
+    email,
+    reference,
+    amount,
+    callbackUrl,
+    metadata: { promotionId, paymentReference: reference },
+  })
+  return {
+    checkout_id: reference,
+    checkout_url: transaction.authorization_url,
+    expires_at: null,
+  }
+}
+
+// Reads the transaction from Paystack and maps it to the checkout shape promotionModel verifies.
+async function getCheckout(reference) {
+  const data = await verifyTransaction(reference)
+  const succeeded = data.status === 'success'
+  const failed = ['failed', 'abandoned', 'reversed'].includes(data.status)
+  return {
+    checkout_id: reference,
+    reference,
+    payment_status: succeeded ? 'paid' : 'unpaid',
+    status: succeeded ? 'completed' : failed ? 'expired' : 'pending',
+    amount: (Number(data.amount) / 100).toFixed(2),
+    currency: data.currency,
+  }
+}
+
+module.exports = { createPromotionCheckout, getCheckout, getSecretKey, initializeTransaction, paystackMode, toKobo, verifyTransaction }

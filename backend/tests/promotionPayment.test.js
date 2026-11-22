@@ -2,8 +2,10 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 const { pool } = require('../config/database')
 const promotionModel = require('../models/promotionModel')
-const bachsService = require('../services/bachsService')
+const crypto = require('node:crypto')
+const paystackService = require('../services/paystackService')
 const promotionController = require('../controllers/promotionController')
+const { toKobo } = require('../services/paystackService')
 
 function response() {
   return {
@@ -25,7 +27,7 @@ async function withStubs(target, stubs, callback) {
   }
 }
 
-test('checkout verification compares the authoritative Bachs session to stored order values', () => {
+test('checkout verification compares the authoritative Paystack session to stored order values', () => {
   const payment = {
     amount: '2000.00',
     currency: 'NGN',
@@ -47,15 +49,9 @@ test('checkout verification compares the authoritative Bachs session to stored o
   assert.equal(promotionModel.checkoutMatchesPayment(payment, { ...checkout, payment_status: 'pending' }), false)
 })
 
-test('Bachs checkout amounts retain exact decimal precision', () => {
-  assert.equal(bachsService.formatAmount('2000'), '2000.00')
-  assert.equal(bachsService.formatAmount('5000.25'), '5000.25')
-  assert.throws(() => bachsService.formatAmount('5000.257'), { statusCode: 500 })
-})
-
-test('promotion initialization creates a Bachs checkout for an owned advertisement and saves its session', async () => {
-  const originalKey = process.env.BACHS_API_KEY
-  process.env.BACHS_API_KEY = 'sk_sandbox_promotion-test'
+test('promotion initialization creates a Paystack checkout for an owned advertisement and saves its session', async () => {
+  const originalKey = process.env.PAYSTACK_SECRET_KEY
+  process.env.PAYSTACK_SECRET_KEY = 'sk_test_promotion'
   const calls = {}
   try {
     await withStubs(promotionModel, {
@@ -69,12 +65,12 @@ test('promotion initialization creates a Bachs checkout for an owned advertiseme
       }
     },
     saveCheckoutSession: async (reference, checkout) => { calls.saved = { reference, checkout } },
-  }, async () => withStubs(bachsService, {
+  }, async () => withStubs(paystackService, {
     createPromotionCheckout: async (input) => {
       calls.checkout = input
       return {
         checkout_id: 'chk_promotion',
-        checkout_url: 'https://checkout.bachs.io/c/example',
+        checkout_url: 'https://checkout.paystack.com/example',
         reference: input.reference,
         expires_at: '2026-06-01T10:00:00Z',
       }
@@ -83,7 +79,7 @@ test('promotion initialization creates a Bachs checkout for an owned advertiseme
     const res = response()
     await promotionController.initialize({
       body: { advertisementId: 7, packageId: 3 },
-      user: { id: 42 },
+      user: { id: 42, email: 'buyer@example.com' },
     }, res)
 
     assert.equal(res.statusCode, 201)
@@ -92,17 +88,18 @@ test('promotion initialization creates a Bachs checkout for an owned advertiseme
     assert.equal(calls.pending.packageId, 3)
     assert.equal(calls.checkout.amount, '2000.00')
     assert.equal(calls.checkout.promotionId, 12)
-    assert.match(calls.checkout.successUrl, /\/dashboard\/promotions\?payment_reference=/)
+    assert.equal(calls.checkout.email, 'buyer@example.com')
+    assert.match(calls.checkout.callbackUrl, /\/dashboard\/promotions\?payment_reference=/)
     assert.equal(calls.saved.checkout.checkout_id, 'chk_promotion')
-    assert.equal(res.body.authorizationUrl, 'https://checkout.bachs.io/c/example')
+    assert.equal(res.body.authorizationUrl, 'https://checkout.paystack.com/example')
     }))
   } finally {
-    if (originalKey === undefined) delete process.env.BACHS_API_KEY
-    else process.env.BACHS_API_KEY = originalKey
+    if (originalKey === undefined) delete process.env.PAYSTACK_SECRET_KEY
+    else process.env.PAYSTACK_SECRET_KEY = originalKey
   }
 })
 
-test('promotion verification is owner-scoped and fulfils only a paid Bachs checkout', async () => {
+test('promotion verification is owner-scoped and fulfils only a paid Paystack checkout', async () => {
   const calls = {}
   await withStubs(promotionModel, {
     getPaymentByReference: async (reference, userId) => {
@@ -117,7 +114,7 @@ test('promotion verification is owner-scoped and fulfils only a paid Bachs check
       calls.complete = { checkoutId, checkout }
       return { alreadyProcessed: false, promotionId: 12, status: 'active' }
     },
-  }, async () => withStubs(bachsService, {
+  }, async () => withStubs(paystackService, {
     getCheckout: async (checkoutId) => {
       calls.checkoutId = checkoutId
       return { checkout_id: checkoutId, payment_status: 'paid' }
@@ -137,7 +134,7 @@ test('promotion verification is owner-scoped and fulfils only a paid Bachs check
   }))
 })
 
-test('duplicate Bachs webhook event IDs do not apply a promotion twice', async () => {
+test('duplicate Paystack webhook event IDs do not apply a promotion twice', async () => {
   const originalGetConnection = pool.getConnection
   const eventIds = new Set()
   const writes = []
@@ -240,65 +237,63 @@ test('a seller cannot start a promotion for another seller advertisement', async
   }
 })
 
-test('Bachs webhook controller verifies and reconciles successful checkout events', async () => {
-  const event = {
-    id: 'evt_promotion',
-    type: 'checkout.completed',
-    data: { checkout_id: 'chk_promotion', payment_status: 'paid' },
-  }
-  const calls = []
-  await withStubs(bachsService, {
-    constructEvent: (rawBody, headers) => {
-      assert.equal(rawBody.toString(), 'raw-json')
-      assert.equal(headers['x-bachs-signature'], 'signature')
-      return event
-    },
-    getCheckout: async (checkoutId) => {
-      calls.push(['getCheckout', checkoutId])
-      return { checkout_id: checkoutId, payment_status: 'paid' }
-    },
-  }, async () => withStubs(promotionModel, {
-    getPaymentByCheckoutId: async (checkoutId) => {
-      calls.push(['findPayment', checkoutId])
-      return { payment_id: 31 }
-    },
-    completeVerifiedPayment: async (checkoutId, checkout, receivedEvent) => {
-      calls.push(['complete', checkoutId, receivedEvent.id])
-      assert.equal(checkout.payment_status, 'paid')
-    },
-  }, async () => {
-    const res = response()
-    await promotionController.webhook({
-      rawBody: Buffer.from('raw-json'),
-      headers: { 'x-bachs-signature': 'signature' },
-    }, res)
-    assert.deepEqual(calls, [
-      ['findPayment', 'chk_promotion'],
-      ['getCheckout', 'chk_promotion'],
-      ['complete', 'chk_promotion', 'evt_promotion'],
-    ])
-    assert.deepEqual(res.body, { received: true })
-  }))
+test('Paystack amounts are converted to kobo with exact precision', () => {
+  assert.equal(toKobo('2000'), 200000)
+  assert.equal(toKobo('5000.25'), 500025)
+  assert.throws(() => toKobo('5000.257'), { statusCode: 400 })
 })
 
-test('Bachs payment-attempt failures do not cancel an open checkout', async () => {
-  const event = {
-    id: 'evt_failed_attempt',
-    type: 'collection.failed',
-    data: { checkout_id: 'chk_promotion' },
+test('Paystack webhook rejects a bad signature and applies a verified charge once', async () => {
+  const secret = 'sk_test_webhook'
+  const body = Buffer.from(JSON.stringify({ event: 'charge.success', data: { id: 77, reference: 'ref_promotion' } }))
+  const goodSignature = crypto.createHmac('sha512', secret).update(body).digest('hex')
+  const originalSecret = process.env.PAYSTACK_SECRET_KEY
+  process.env.PAYSTACK_SECRET_KEY = secret
+  const completed = []
+  try {
+    await withStubs(paystackService, {
+      getCheckout: async (reference) => ({ checkout_id: reference, reference, payment_status: 'paid', amount: '2000.00', currency: 'NGN' }),
+    }, async () => withStubs(promotionModel, {
+      getPaymentByCheckoutId: async () => ({ payment_id: 31 }),
+      completeVerifiedPayment: async (checkoutId, checkout, event) => { completed.push([checkoutId, event.id]) },
+    }, async () => {
+      const bad = response()
+      await promotionController.webhook({ rawBody: body, headers: { 'x-paystack-signature': 'a'.repeat(128) } }, bad)
+      assert.equal(bad.statusCode, 401)
+      assert.deepEqual(completed, [])
+
+      const good = response()
+      await promotionController.webhook({ rawBody: body, headers: { 'x-paystack-signature': goodSignature } }, good)
+      assert.deepEqual(good.body, { received: true })
+      assert.deepEqual(completed, [['ref_promotion', 'charge.success:77']])
+    }))
+  } finally {
+    if (originalSecret === undefined) delete process.env.PAYSTACK_SECRET_KEY
+    else process.env.PAYSTACK_SECRET_KEY = originalSecret
   }
-  let failedPayment = false
-  await withStubs(bachsService, {
-    constructEvent: () => event,
-  }, async () => withStubs(promotionModel, {
-    failPendingPaymentByCheckoutId: async () => { failedPayment = true },
-  }, async () => {
-    const res = response()
-    await promotionController.webhook({
-      rawBody: Buffer.from('raw-json'),
-      headers: {},
-    }, res)
-    assert.equal(failedPayment, false)
-    assert.deepEqual(res.body, { received: true })
-  }))
+})
+
+test('Paystack mode picks the matching key and refuses a mismatched one', () => {
+  const names = ['PAYSTACK_MODE', 'PAYSTACK_TEST_SECRET_KEY', 'PAYSTACK_LIVE_SECRET_KEY', 'PAYSTACK_SECRET_KEY']
+  const saved = Object.fromEntries(names.map((name) => [name, process.env[name]]))
+  try {
+    names.forEach((name) => { delete process.env[name] })
+    assert.equal(paystackService.getSecretKey(), null)
+
+    process.env.PAYSTACK_TEST_SECRET_KEY = 'sk_test_a'
+    process.env.PAYSTACK_LIVE_SECRET_KEY = 'sk_live_b'
+    process.env.PAYSTACK_MODE = 'test'
+    assert.equal(paystackService.getSecretKey(), 'sk_test_a')
+    process.env.PAYSTACK_MODE = 'live'
+    assert.equal(paystackService.getSecretKey(), 'sk_live_b')
+
+    delete process.env.PAYSTACK_LIVE_SECRET_KEY
+    process.env.PAYSTACK_SECRET_KEY = 'sk_test_fallback'
+    assert.throws(() => paystackService.getSecretKey(), { statusCode: 503 })
+  } finally {
+    names.forEach((name) => {
+      if (saved[name] === undefined) delete process.env[name]
+      else process.env[name] = saved[name]
+    })
+  }
 })

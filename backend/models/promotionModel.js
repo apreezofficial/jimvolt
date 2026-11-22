@@ -78,7 +78,7 @@ async function createPendingPromotion({ userId, advertisementId, packageId, refe
     const [payment] = await connection.execute(
       `INSERT INTO payment_transactions
        (user_id, advertisement_id, payment_type, amount, currency, status, provider, provider_reference)
-       VALUES (?, ?, 'promotion', ?, 'NGN', 'pending', 'bachs', ?)`,
+       VALUES (?, ?, 'promotion', ?, 'NGN', 'pending', 'paystack', ?)`,
       [userId, advertisementId, packageInfo.price, reference],
     )
     const [promotion] = await connection.execute(
@@ -109,7 +109,7 @@ async function saveCheckoutSession(reference, checkout) {
   const [result] = await pool.execute(
     `UPDATE payment_transactions
      SET provider_checkout_id = ?, provider_session_expires_at = ?
-     WHERE provider = 'bachs' AND provider_reference = ? AND status = 'pending'`,
+     WHERE provider = 'paystack' AND provider_reference = ? AND status = 'pending'`,
     [checkout.checkout_id, expiresAt, reference],
   )
   if (!result.affectedRows) throw makeError('The promotion checkout could not be saved.', 500)
@@ -126,7 +126,7 @@ async function getPaymentByReference(reference, userId = null) {
             pr.status AS promotion_status
      FROM payment_transactions p
      JOIN promotions pr ON pr.payment_id = p.id
-     WHERE p.provider = 'bachs' AND p.provider_reference = ? ${ownerClause}
+     WHERE p.provider = 'paystack' AND p.provider_reference = ? ${ownerClause}
      LIMIT 1`,
     values,
   )
@@ -140,7 +140,7 @@ async function getPaymentByCheckoutId(checkoutId) {
             pr.id AS promotion_id, pr.status AS promotion_status
      FROM payment_transactions p
      JOIN promotions pr ON pr.payment_id = p.id
-     WHERE p.provider = 'bachs' AND p.provider_checkout_id = ?
+     WHERE p.provider = 'paystack' AND p.provider_checkout_id = ?
      LIMIT 1`,
     [checkoutId],
   )
@@ -153,7 +153,7 @@ async function failPendingPayment(reference, event = null) {
     await connection.beginTransaction()
     const [rows] = await connection.execute(
       `SELECT id FROM payment_transactions
-       WHERE provider = 'bachs' AND provider_reference = ? AND status = 'pending' FOR UPDATE`,
+       WHERE provider = 'paystack' AND provider_reference = ? AND status = 'pending' FOR UPDATE`,
       [reference],
     )
     if (event) {
@@ -202,7 +202,7 @@ async function failPendingPaymentByCheckoutId(checkoutId, event) {
     }
     const [rows] = await connection.execute(
       `SELECT id FROM payment_transactions
-       WHERE provider = 'bachs' AND provider_checkout_id = ? AND status = 'pending'
+       WHERE provider = 'paystack' AND provider_checkout_id = ? AND status = 'pending'
        FOR UPDATE`,
       [checkoutId],
     )
@@ -240,7 +240,7 @@ async function completeVerifiedPayment(checkoutId, verified, event = null) {
        FROM payment_transactions p
        JOIN promotions pr ON pr.payment_id = p.id
        LEFT JOIN advertisements a ON a.id = pr.advertisement_id
-       WHERE p.provider = 'bachs' AND p.provider_checkout_id = ? FOR UPDATE OF p, pr`,
+       WHERE p.provider = 'paystack' AND p.provider_checkout_id = ? FOR UPDATE OF p, pr`,
       [checkoutId],
     )
     if (!rows.length) throw makeError('Payment reference not found.', 404)
