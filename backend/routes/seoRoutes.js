@@ -122,7 +122,7 @@ function siteSchemas(siteUrl) {
       '@type': 'Organization',
       name: 'Jimvolt',
       url: siteUrl,
-      logo: new URL('/favicon.svg', siteUrl).href,
+      logo: new URL('/icon-256.png', siteUrl).href,
     },
     {
       '@context': 'https://schema.org',

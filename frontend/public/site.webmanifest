@@ -1,0 +1,13 @@
+{
+  "name": "Jimvolt",
+  "short_name": "Jimvolt",
+  "description": "Nigeria's marketplace for solar, storage and clean energy.",
+  "start_url": "/",
+  "display": "browser",
+  "theme_color": "#1264D8",
+  "background_color": "#ffffff",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-256.png", "sizes": "256x256", "type": "image/png" }
+  ]
+}
