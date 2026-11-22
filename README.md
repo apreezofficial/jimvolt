@@ -6,7 +6,7 @@ Jimvolt is a React marketplace for renewable-energy products and services, backe
 ## Requirements
 
 - Node.js 22 or newer
-- PostgreSQL 14 or newer (Aiven for PostgreSQL works, and so does any local install)
+- PostgreSQL 14 or newer (Supabase and Aiven for PostgreSQL work, and so does any local install)
 
 ## Database setup
 
@@ -27,6 +27,34 @@ You can also apply `backend/config/schema.sql` yourself with `psql -f backend/co
 2. Download the CA certificate from the service page, save it as `backend/certs/ca.pem`, and set `DB_SSL_CA=certs/ca.pem`. Remote databases require it.
 3. On Vercel, create a **connection pool** in the Aiven console (Pools tab) and use the pool's port and database name for `DB_PORT` and `DB_NAME`. PgBouncer shares a small number of real connections between all serverless instances, which prevents "too many connections" errors. Pool mode `transaction` is supported.
 4. Each Vercel instance opens at most 2 connections by default; set `DB_CONNECTION_LIMIT` to change that.
+
+### Supabase (PostgreSQL)
+
+Supabase is plain PostgreSQL, so the API works with it unchanged. Use it only as the database; the app keeps its own login, uploads and messaging.
+
+1. Create a Supabase project. In **Project Settings > Database**, copy the **Transaction pooler** connection details (host like `aws-0-<region>.pooler.supabase.com`, port `6543`). On Vercel use the pooler host, not the direct `db.<ref>.supabase.co` host, which needs IPv6 or a paid add-on.
+2. Create a dedicated application role instead of using the default `postgres` user. In the SQL editor:
+
+   ```sql
+   CREATE ROLE jimvolt_app LOGIN PASSWORD 'choose-a-unique-password';
+   GRANT CREATE, USAGE ON SCHEMA public TO jimvolt_app;
+   GRANT jimvolt_app TO postgres;
+   ```
+
+   The pooler user name is `<role>.<project-ref>`, for example `jimvolt_app.abcdefghijklmnop`. Run `CREATE EXTENSION IF NOT EXISTS citext;` once as the project owner if the app role cannot create it.
+3. Download the CA certificate from **Project Settings > Database > SSL Configuration**, save it as `backend/certs/supabase-ca.crt`, and set `DB_SSL_CA=certs/supabase-ca.crt`. `DB_SSL_MODE=require` encrypts the connection without verifying the server certificate; use it only if you cannot use the CA.
+4. Set `DB_HOST`, `DB_PORT=6543`, `DB_USER` (`jimvolt_app.<project-ref>`), `DB_PASSWORD`, and `DB_NAME=postgres`.
+5. On startup the API applies `schema.sql`. When Supabase's `anon` role exists, the schema also enables row-level security on every table and removes the API roles' grants, so Supabase's built-in data API cannot read tables such as `users` (the API connects directly and is unaffected).
+
+To move data from another PostgreSQL database (for example Aiven), stop writes, then dump and restore:
+
+```bash
+pg_dump --no-owner --no-privileges --data-only --disable-triggers "$OLD_DATABASE_URL" > jimvolt-data.sql
+# Start the API once against Supabase so it creates the tables, then:
+psql "$SUPABASE_DIRECT_OR_SESSION_URL" -f jimvolt-data.sql
+```
+
+Check row counts on both sides before switching the production `DB_*` variables.
 
 ### Moving existing MySQL data to PostgreSQL
 

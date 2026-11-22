@@ -21,8 +21,11 @@ if (['root', 'postgres'].includes(process.env.DB_USER.toLowerCase())) {
 
 const isLocalDatabase = ['localhost', '127.0.0.1', '::1'].includes(process.env.DB_HOST.toLowerCase())
 const sslCaSetting = process.env.DB_SSL_CA?.trim()
-if (!isLocalDatabase && !sslCaSetting) {
-  throw new Error('DB_SSL_CA must point to the Aiven CA certificate when using a remote PostgreSQL database.')
+// DB_SSL_MODE=require encrypts the connection without checking the server certificate. Prefer DB_SSL_CA
+// (your provider's CA certificate, e.g. Supabase's prod-ca-2021.crt or Aiven's ca.pem) whenever possible.
+const sslRequireOnly = String(process.env.DB_SSL_MODE || '').trim().toLowerCase() === 'require'
+if (!isLocalDatabase && !sslCaSetting && !sslRequireOnly) {
+  throw new Error('Set DB_SSL_CA to your database provider\'s CA certificate path (or DB_SSL_MODE=require) when using a remote PostgreSQL database.')
 }
 
 let ssl
@@ -36,14 +39,18 @@ if (sslCaSetting) {
   } catch (error) {
     throw new Error(`Could not read the configured DB_SSL_CA certificate at ${sslCaPath}: ${error.message}`)
   }
+} else if (sslRequireOnly && !isLocalDatabase) {
+  console.warn('DB_SSL_MODE=require: the database connection is encrypted but the server certificate is not verified.')
+  ssl = { rejectUnauthorized: false }
 }
 
 // Return BIGINT/COUNT values as numbers (as the MySQL driver did). NUMERIC stays a string, which
 // keeps money values exact exactly like MySQL DECIMAL did.
 types.setTypeParser(20, (value) => Number(value))
 
-// Every Vercel instance gets its own pool, so keep serverless pools tiny. If you use Aiven's
-// PgBouncer connection pool (recommended on Vercel), point DB_PORT at the pool port.
+// Every Vercel instance gets its own pool, so keep serverless pools tiny. On Vercel use your provider's
+// connection pooler: Supabase's pooler in transaction mode (port 6543) or Aiven's PgBouncer pool port.
+// Queries use unnamed statements and transaction-scoped locks, so transaction pooling is safe.
 const isServerless = process.env.VERCEL === '1'
 const connectionLimit = Number.parseInt(process.env.DB_CONNECTION_LIMIT, 10) || (isServerless ? 2 : 10)
 
