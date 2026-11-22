@@ -478,3 +478,22 @@ END $$;
 -- Google sign-in: the stable Google account id ("sub") for each linked member.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users (google_sub);
+
+-- Supabase (or any host with the anon/authenticated API roles): the backend connects directly with its own
+-- database role, so the public data API must not expose any table. Turn on row-level security (no policies
+-- means no access for the API roles) and remove their grants. Skipped when those roles do not exist.
+DO $$
+DECLARE t text;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    END LOOP;
+    REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
+    REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+      REVOKE ALL ON ALL TABLES IN SCHEMA public FROM authenticated;
+      REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM authenticated;
+    END IF;
+  END IF;
+END $$;
