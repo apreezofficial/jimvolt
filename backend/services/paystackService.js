@@ -14,11 +14,36 @@ function toKobo(amount) {
   return Number(value)
 }
 
-function secretKey() {
-  if (!process.env.PAYSTACK_SECRET_KEY) {
-    throw serviceError('Online payments are not configured.', 503)
+/**
+ * Resolves the Paystack secret key for the configured mode.
+ *
+ *   PAYSTACK_MODE=test  -> PAYSTACK_TEST_SECRET_KEY (sk_test_...)
+ *   PAYSTACK_MODE=live  -> PAYSTACK_LIVE_SECRET_KEY (sk_live_...)
+ *
+ * PAYSTACK_SECRET_KEY is used when the mode-specific key is not set. Paystack
+ * decides test or live from the key itself, so a key that does not match the
+ * chosen mode is rejected instead of silently charging the wrong environment.
+ */
+function paystackMode() {
+  return String(process.env.PAYSTACK_MODE || '').trim().toLowerCase() === 'live' ? 'live' : 'test'
+}
+
+function getSecretKey() {
+  const mode = paystackMode()
+  const key = (mode === 'live' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_TEST_SECRET_KEY)
+    || process.env.PAYSTACK_SECRET_KEY
+  if (!key) return null
+  const expectedPrefix = mode === 'live' ? 'sk_live_' : 'sk_test_'
+  if (!key.startsWith(expectedPrefix)) {
+    throw serviceError(`PAYSTACK_MODE is ${mode}, but the configured Paystack key is not a ${expectedPrefix}... key.`, 503)
   }
-  return process.env.PAYSTACK_SECRET_KEY
+  return key
+}
+
+function secretKey() {
+  const key = getSecretKey()
+  if (!key) throw serviceError('Online payments are not configured.', 503)
+  return key
 }
 
 async function requestPaystack(path, options = {}) {
@@ -93,4 +118,4 @@ async function getCheckout(reference) {
   }
 }
 
-module.exports = { createPromotionCheckout, getCheckout, initializeTransaction, toKobo, verifyTransaction }
+module.exports = { createPromotionCheckout, getCheckout, getSecretKey, initializeTransaction, paystackMode, toKobo, verifyTransaction }

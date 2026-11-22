@@ -272,3 +272,28 @@ test('Paystack webhook rejects a bad signature and applies a verified charge onc
     else process.env.PAYSTACK_SECRET_KEY = originalSecret
   }
 })
+
+test('Paystack mode picks the matching key and refuses a mismatched one', () => {
+  const names = ['PAYSTACK_MODE', 'PAYSTACK_TEST_SECRET_KEY', 'PAYSTACK_LIVE_SECRET_KEY', 'PAYSTACK_SECRET_KEY']
+  const saved = Object.fromEntries(names.map((name) => [name, process.env[name]]))
+  try {
+    names.forEach((name) => { delete process.env[name] })
+    assert.equal(paystackService.getSecretKey(), null)
+
+    process.env.PAYSTACK_TEST_SECRET_KEY = 'sk_test_a'
+    process.env.PAYSTACK_LIVE_SECRET_KEY = 'sk_live_b'
+    process.env.PAYSTACK_MODE = 'test'
+    assert.equal(paystackService.getSecretKey(), 'sk_test_a')
+    process.env.PAYSTACK_MODE = 'live'
+    assert.equal(paystackService.getSecretKey(), 'sk_live_b')
+
+    delete process.env.PAYSTACK_LIVE_SECRET_KEY
+    process.env.PAYSTACK_SECRET_KEY = 'sk_test_fallback'
+    assert.throws(() => paystackService.getSecretKey(), { statusCode: 503 })
+  } finally {
+    names.forEach((name) => {
+      if (saved[name] === undefined) delete process.env[name]
+      else process.env[name] = saved[name]
+    })
+  }
+})

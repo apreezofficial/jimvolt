@@ -47,7 +47,7 @@ async function myPromotions(req, res) {
 
 async function initialize(req, res) {
   checkValidation(req)
-  if (!process.env.PAYSTACK_SECRET_KEY) {
+  if (!paystackService.getSecretKey()) {
     const error = new Error('Promotion checkout is temporarily unavailable. Please try again later.')
     error.statusCode = 503
     throw error
@@ -116,7 +116,7 @@ async function verify(req, res) {
 
 async function webhook(req, res) {
   const signature = req.headers['x-paystack-signature']
-  if (!verifyPaystackSignature(req.rawBody, signature, process.env.PAYSTACK_SECRET_KEY)) {
+  if (!verifyPaystackSignature(req.rawBody, signature, paystackService.getSecretKey())) {
     return res.status(401).json({ message: 'Paystack webhook signature could not be verified.' })
   }
 
