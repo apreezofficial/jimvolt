@@ -1387,3 +1387,18 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
 .admin-banner-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .admin-banner-actions { display: flex; gap: 8px; }
 @media (max-width: 900px) { .admin-banner-layout { grid-template-columns: 1fr; } }
+
+/* Advertise page */
+.advertise-form { display: grid; gap: 16px; max-width: 640px; padding: 22px; margin-top: 18px; }
+.advertise-days { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.advertise-days input { width: 96px; }
+.advertise-total { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding: 12px 14px; border-radius: 12px; background: #eef5ff; color: var(--blue-dark); }
+.advertise-total strong { font-size: 1.4rem; }
+.advertise-login { max-width: 640px; margin-top: 18px; }
+.advertise-mine { margin-top: 32px; max-width: 640px; }
+.advertise-list { display: grid; gap: 12px; }
+.advertise-list .panel { padding: 14px; }
+.field-error { color: #b91c1c; }
+.admin-banner-price { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; padding: 16px 18px; margin-bottom: 18px; }
+.admin-banner-price .field { flex: 1 1 220px; margin: 0; }
+.admin-banner-price .muted { flex-basis: 100%; margin: 0; }

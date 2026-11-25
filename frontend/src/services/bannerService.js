@@ -20,3 +20,15 @@ export const deleteAdminBanner = (id) => api.delete(`/admin/banners/${id}`);
 
 // Admin previews need the login token, so the image is fetched as a blob instead of an <img src>.
 export const getAdminBannerImage = (id) => api.get(`/admin/banners/${id}/image`, { responseType: 'blob' });
+
+// ---- Paid banners (advertisers) ----
+export const getBannerPricing = () => api.get('/banners/pricing');
+export const createBannerOrder = (formData) => api.post('/banners/orders', formData, { timeout: 60000 });
+export const verifyBannerOrder = (reference) => api.get(`/banners/orders/${encodeURIComponent(reference)}/verify`);
+export const getMyBanners = () => api.get('/banners/mine');
+
+// ---- Admin review and pricing ----
+export const approveAdminBanner = (id) => api.put(`/admin/banners/${id}/approve`);
+export const rejectAdminBanner = (id, note) => api.put(`/admin/banners/${id}/reject`, { note });
+export const getAdminBannerSettings = () => api.get('/admin/banner-settings');
+export const saveAdminBannerSettings = (pricePerDay) => api.put('/admin/banner-settings', { pricePerDay });
