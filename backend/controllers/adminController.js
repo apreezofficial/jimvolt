@@ -4,6 +4,7 @@ const categoryModel = require('../models/categoryModel')
 const adminModel = require('../models/adminModel')
 const sellerModel = require('../models/sellerModel')
 const messageModel = require('../models/messageModel')
+const { readVerificationFile } = require('../utils/verificationStorage')
 
 function checkValidation(req) {
   const errors = validationResult(req)
@@ -402,14 +403,26 @@ async function listPendingVerifications(req, res) {
 async function getVerificationDocument(req, res) {
   checkValidation(req)
   const documentType = req.params.document || req.query.document || 'identity'
-  const document = await sellerModel.getVerificationDocument(req.params.id, documentType)
-  if (!document || !/^[0-9a-f-]+\.(?:pdf|png|jpg)$/.test(document)) {
+  const filePath = await sellerModel.getVerificationDocument(req.params.id, documentType)
+  if (!filePath) {
     return sendMissing(res, 'Verification document not found.')
   }
-  const { privateDirectory } = require('../middleware/verificationUpload')
-  const path = require('node:path')
+  const { data } = await readVerificationFile(filePath)
+  const extension = filePath.split('.').pop().toLowerCase()
+  const contentType = {
+    pdf: 'application/pdf',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif',
+  }[extension]
+  if (!contentType) return sendMissing(res, 'Verification document not found.')
   res.set('Cache-Control', 'private, no-store')
-  return res.download(path.join(privateDirectory, document), 'verification-document')
+  res.set('Content-Type', contentType)
+  res.set('Content-Disposition', `attachment; filename="verification-document.${extension}"`)
+  res.set('X-Content-Type-Options', 'nosniff')
+  return res.send(data)
 }
 async function moderateVerification(req, res) {
   return reviewVerification(req, res, req.body.status)

@@ -91,7 +91,7 @@ export async function prepareDocument(file, { maxMb = 5 } = {}) {
     return { file };
   }
   const problem = describeImageProblem(file);
-  if (problem.includes('not a supported image')) return { error: `"${file.name}" is not a supported document. Upload a PDF, PNG, JPEG or iPhone HEIC photo.` };
+  if (problem.includes('not a supported image')) return { error: `"${file.name}" is not a supported document. Upload a PDF, PNG, JPEG, WebP or iPhone HEIC photo.` };
   if (problem) return { error: `"${file.name}" ${problem}` };
   const prepared = await prepareImage(file, { maxDimension: 2400, quality: 0.85, shrinkAboveBytes: 1.5 * MB });
   if (prepared.size > maxMb * MB) return { error: `"${file.name}" is still ${(prepared.size / MB).toFixed(1)} MB after compressing. Maximum is ${maxMb} MB.` };

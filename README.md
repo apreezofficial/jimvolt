@@ -150,8 +150,24 @@ Configure these values in Vercel's project Environment Variables for each enviro
 - `BACHS_API_KEY` and `BACHS_WEBHOOK_SECRET` to enable Bachs promotion checkout and verified webhooks. Use sandbox credentials during testing and keep provider secrets server-side.
 - Configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` to send account emails.
 - Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` for message image attachments. Set `VITE_SUPPORT_EMAIL` if the Contact page should show a support address.
+- Configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` on the backend for private seller verification document storage. Never expose the service-role key to the frontend.
+- Configure `VITE_SUPABASE_ANON_KEY` as a frontend build variable for browser uploads. The Supabase anon key is public; bucket privacy and one-time upload tokens provide access control.
 
-Do not set `JIMVOLT_FRONTEND_URL` manually; Vercel injects it through the backend-to-frontend service binding. Vercel Functions do not provide persistent local disk or long-lived WebSocket connections. Product image files and seller verification documents currently use local disk, and real-time messaging uses Socket.IO; those features need durable object storage and a separate WebSocket-capable service for production use. Configure all required environment variables before deploying; the database must already be provisioned and accessible.
+Do not set `JIMVOLT_FRONTEND_URL` manually; Vercel injects it through the backend-to-frontend service binding. Vercel Functions do not provide persistent local disk or long-lived WebSocket connections. Product images still need durable storage when Cloudinary is not configured, and real-time messaging uses Socket.IO, which needs a separate WebSocket-capable service in production. Configure all required environment variables before deploying; the database must already be provisioned and accessible.
+
+## Seller verification document storage
+
+Seller verification documents are uploaded directly to a private Supabase Storage bucket using short-lived, seller-scoped upload URLs. The API validates the stored file signature and size before saving its private object key in the existing `seller_verifications` document-path columns. Administrators retrieve documents through authenticated `/api/admin/verifications/:id/document/:document` endpoints; no public bucket or public document URL is used.
+
+Create a bucket named `seller-verification-private` in the Supabase project configured by `SUPABASE_URL`:
+
+- Keep the bucket **private**.
+- Set the maximum file size to **5 MiB**.
+- Allow only `application/pdf`, `image/png`, `image/jpeg`, `image/webp`, `image/heic`, `image/heif`, `image/heic-sequence`, and `image/heif-sequence`.
+- Configure Storage CORS to allow the Jimvolt frontend origins used in `FRONTEND_URL` and Vercel deployments, so browsers can upload to signed URLs.
+- Set `SUPABASE_URL` and the project's `SUPABASE_SERVICE_ROLE_KEY` as backend/Vercel environment variables only. Set `VITE_SUPABASE_ANON_KEY` from the same project's public anon key as a frontend/Vite build variable. Never use a `VITE_` prefix for the service-role key.
+
+The API uses the service-role key only server-side to issue upload URLs, validate uploaded bytes, and stream documents to authorized administrators. Seller uploads remain capped at 5 MiB per file and 15 MiB combined. The database schema already stores the private object keys in its existing document-path fields; no schema migration is required for new submissions. Existing records that point to files in `backend/private-verifications` need a one-time migration from an available copy before administrators can retrieve them from cloud storage. Run `node scripts/migrateVerificationDocumentsToSupabase.js` from `backend/` on a trusted machine with the database, storage environment variables, and legacy files available; do not run it in a serverless function.
 
 ## Advertisement image uploads
 

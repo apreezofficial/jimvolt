@@ -13,13 +13,14 @@ import { deleteAd } from '../services/listingService.js';
 import {
   duplicateSellerAd, getAdvertisementAnalytics, getSellerAds,
   getSellerAnalytics, getSellerDashboard, getSellerNotifications, getSellerVerification,
-  markSellerNotificationRead, submitSellerVerification, updateSellerVerification,
+  createSellerVerificationUploadUrls, markSellerNotificationRead,
+  submitSellerVerification, updateSellerVerification,
   updateSellerAdStatus,
 } from '../services/sellerService.js';
 import { NIGERIAN_STATES } from '../utils/constants.js';
 import { formatNaira } from '../utils/format.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
-import { DOCUMENT_ACCEPT, prepareDocument } from '../utils/imageFiles.js';
+import { DOCUMENT_ACCEPT, prepareDocument, resolveType } from '../utils/imageFiles.js';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 import UserAvatar from '../components/UserAvatar.jsx';
 import {
@@ -756,15 +757,42 @@ function Verification({ setToast }) {
   const submit = async (event) => {
     event.preventDefault();
     if (!documents.identityDocument && !verification?.has_identity_document && !documents.cacDocument && !documents.additionalDocument) {
-      setError('Attach at least one PDF, PNG, JPEG or iPhone HEIC verification document.');
+      setError('Attach at least one PDF, PNG, JPEG, WebP or iPhone HEIC verification document.');
       return;
     }
-    const payload = new FormData();
-    Object.entries(form).forEach(([key, value]) => payload.append(key, value));
-    Object.entries(documents).forEach(([key, file]) => { if (file) payload.append(key, file); });
     setSaving(true);
     setError('');
     try {
+      const selectedDocuments = Object.entries(documents).filter(([, file]) => file);
+      const documentPaths = {};
+      if (selectedDocuments.length) {
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (!supabaseAnonKey) throw new Error('Verification document uploads are not configured. Please contact support.');
+        const { data: signedUploads } = await createSellerVerificationUploadUrls(
+          selectedDocuments.map(([field, file]) => ({
+            field,
+            mimeType: resolveType(file),
+            size: file.size,
+          })),
+        );
+        for (const upload of signedUploads.uploads) {
+          const file = documents[upload.field];
+          const response = await fetch(upload.uploadUrl, {
+            method: 'PUT',
+            headers: {
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${supabaseAnonKey}`,
+              'Content-Type': upload.mimeType,
+              'x-upsert': 'false',
+            },
+            body: file,
+            signal: AbortSignal.timeout(120000),
+          });
+          if (!response.ok) throw new Error('A verification document could not be uploaded. Please try again.');
+          documentPaths[upload.field] = upload.path;
+        }
+      }
+      const payload = { ...form, documents: documentPaths };
       const request = verification?.status === 'information_requested'
         ? updateSellerVerification(payload)
         : submitSellerVerification(payload);
@@ -814,9 +842,9 @@ function Verification({ setToast }) {
         <label className="field"><span>CAC registration number</span><input name="registrationNumber" maxLength="100" value={form.registrationNumber} onChange={update} /></label>
         <label className="field"><span>Business website</span><input name="website" type="url" maxLength="2048" placeholder="https://" value={form.website} onChange={update} /></label>
         <label className="field verification-description-field"><span>Business description</span><textarea name="businessDescription" rows="3" maxLength="5000" value={form.businessDescription} onChange={update} /></label>
-        <label className="field verification-file-field"><span>CAC certificate <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'cacDocument')} /></label>
-        <label className="field verification-file-field"><span>Business identity / supporting document {verification?.has_identity_document ? '' : '*'} <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" required={!verification?.has_identity_document} accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'identityDocument')} /></label>
-        <label className="field verification-file-field"><span>Additional supporting document <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'additionalDocument')} /></label>
+        <label className="field verification-file-field"><span>CAC certificate <small>PDF, PNG, JPEG, WebP or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'cacDocument')} /></label>
+        <label className="field verification-file-field"><span>Business identity / supporting document {verification?.has_identity_document ? '' : '*'} <small>PDF, PNG, JPEG, WebP or iPhone HEIC · maximum 5 MB</small></span><input type="file" required={!verification?.has_identity_document} accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'identityDocument')} /></label>
+        <label className="field verification-file-field"><span>Additional supporting document <small>PDF, PNG, JPEG, WebP or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'additionalDocument')} /></label>
         <div className="verification-submit"><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Submitting...' : 'Submit for review'}</button></div>
       </form>
     </section>}
