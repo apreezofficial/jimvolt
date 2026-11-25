@@ -7,7 +7,7 @@ const TABLES_WITH_ID = new Set([
   'users', 'categories', 'advertisements', 'product_images', 'favourites', 'recently_viewed',
   'price_history', 'conversations', 'messages', 'seller_profiles', 'seller_slug_history',
   'seller_verifications', 'advertisement_analytics', 'notifications', 'admin_audit_logs',
-  'reports', 'payment_transactions', 'promotion_packages', 'promotions',
+  'reports', 'payment_transactions', 'promotion_packages', 'promotions', 'banners',
 ])
 
 // `?` -> `$1, $2, ...` and `backticks` -> "double quotes", leaving quoted string literals alone.
