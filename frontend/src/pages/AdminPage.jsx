@@ -63,15 +63,23 @@ export default function AdminPage({ initialTab = 'advertisements' }) {
     } finally { setWorkingId(null); }
   };
 
-  const downloadDocument = async (id) => {
+  const downloadDocument = async (id, type) => {
     setWorkingId(id);
     setVerificationError('');
     try {
-      const { data } = await api.get(`/admin/verifications/${id}/document`, { responseType: 'blob' });
+      const { data } = await api.get(`/admin/verifications/${id}/document/${type}`, { responseType: 'blob' });
       const objectUrl = URL.createObjectURL(data);
       const anchor = document.createElement('a');
       anchor.href = objectUrl;
-      anchor.download = 'seller-verification-document';
+      const extension = {
+        'application/pdf': 'pdf',
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+        'image/heic': 'heic',
+        'image/heif': 'heif',
+      }[data.type] || 'document';
+      anchor.download = `seller-verification-${type}.${extension}`;
       anchor.click();
       URL.revokeObjectURL(objectUrl);
     } catch (requestError) {
@@ -109,7 +117,17 @@ export default function AdminPage({ initialTab = 'advertisements' }) {
         {!verifications.length && !verificationError ? <div className="empty">There are no seller verification requests awaiting review.</div> : <div className="verification-review-list">{verifications.map((item) => <article className="panel" key={item.id}>
           <div className="verification-review-heading"><div><p className="eyebrow">{item.verification_type.replaceAll('_', ' ')}</p><h2>{item.business_name || item.full_name}</h2><p className="muted">{item.full_name} · {item.email}</p></div><time>{new Date(item.submitted_at).toLocaleDateString('en-NG')}</time></div>
           <dl className="verification-review-details"><div><dt>Registration number</dt><dd>{item.registration_number || 'Not provided'}</dd></div><div><dt>Business address</dt><dd>{item.business_address}</dd></div><div><dt>Business phone</dt><dd>{item.business_phone}</dd></div></dl>
-          <button type="button" className="btn btn-white" disabled={workingId === item.id} onClick={() => downloadDocument(item.id)}><Download size={16} /> Download private document</button>
+          <div className="admin-review-actions">
+            {[
+              ['cac', 'CAC certificate', item.has_cac_document],
+              ['identity', 'Identity document', item.has_identity_document],
+              ['additional', 'Additional document', item.has_additional_document],
+            ].filter(([, , available]) => available).map(([type, label]) => (
+              <button key={type} type="button" className="btn btn-white" disabled={workingId === item.id} onClick={() => downloadDocument(item.id, type)}>
+                <Download size={16} /> Download {label}
+              </button>
+            ))}
+          </div>
           <label className="field verification-review-notes"><span>Review notes (required when rejecting)</span><textarea rows="2" maxLength="1000" value={reviewNotes[item.id] || ''} onChange={(event) => setReviewNotes((current) => ({ ...current, [item.id]: event.target.value }))} /></label>
           <div className="admin-review-actions"><button className="btn btn-primary" type="button" disabled={workingId === item.id} onClick={() => review(item.id, 'verified')}><Check size={16} /> Verify seller</button><button className="btn btn-white" type="button" disabled={workingId === item.id || !reviewNotes[item.id]?.trim()} onClick={() => review(item.id, 'rejected')}><X size={16} /> Reject request</button></div>
         </article>)}</div>}

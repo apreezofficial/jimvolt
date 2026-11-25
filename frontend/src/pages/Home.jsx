@@ -1,3 +1,4 @@
+import BannerSlideshow from '../components/BannerSlideshow.jsx';
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BadgeCheck, ShieldCheck, MapPin, ArrowRight } from 'lucide-react';
@@ -40,6 +41,8 @@ export default function Home() {
       <ListingSection title="Featured Products" subtitle="Sponsored placements from renewable-energy sellers" loader={getPromoted} to="/ads?featured=true" />
       <ListingSection title="Discover products" loader={getDiscover} to="/ads?sort=random" skeletons={8} />
       <ListingSection title="Recently posted" loader={getRecent} to="/ads?sort=newest" skeletons={8} />
+
+      <BannerSlideshow />
 
       <section className="container">
         <div className="promo">

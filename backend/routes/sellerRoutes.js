@@ -74,6 +74,7 @@ const analyticsDateFields = [
 ]
 router.get('/analytics', ...analyticsDateFields, asyncHandler(sellerController.analytics))
 router.get('/analytics/:advertisementId', param('advertisementId').isInt({ min: 1 }), ...analyticsDateFields, asyncHandler(sellerController.analytics))
+router.post('/verification/upload-urls', asyncHandler(sellerController.createVerificationUploadUrls))
 router.post('/verification', parseVerificationUpload, ...verificationFields, asyncHandler(sellerController.submitVerification))
 router.put('/verification', parseVerificationUpload, ...verificationFields, asyncHandler(sellerController.updateVerification))
 router.post('/verification/documents', parseVerificationUpload, asyncHandler(sellerController.uploadVerificationDocuments))

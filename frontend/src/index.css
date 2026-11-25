@@ -1360,3 +1360,45 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
 /* Contact form */
 .contact-form { display: grid; gap: 14px; max-width: 560px; margin: 16px 0; }
 .contact-form textarea { width: 100%; min-height: 140px; }
+
+/* Homepage banner slideshow: same size as the .promo ("Sell your solar equipment") section, 1200 x 152 */
+.banner-slideshow { position: relative; overflow: hidden; margin-top: 48px; border-radius: 20px; background: #eef2f8; aspect-ratio: 1200 / 152; min-height: 96px; }
+.banner-track { display: flex; height: 100%; transition: transform .5s ease; }
+.banner-slide { flex: 0 0 100%; height: 100%; }
+.banner-slide a, .banner-slide img { display: block; width: 100%; height: 100%; }
+.banner-slide img { object-fit: cover; user-select: none; }
+.banner-arrow { position: absolute; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .88); color: #0b2a57; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); opacity: 0; transition: opacity .15s; }
+.banner-slideshow:hover .banner-arrow, .banner-arrow:focus-visible { opacity: 1; }
+.banner-prev { left: 12px; } .banner-next { right: 12px; }
+.banner-dots { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 6px; }
+.banner-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .6); box-shadow: 0 0 0 1px rgba(0, 0, 0, .15); cursor: pointer; }
+.banner-dots button.active { width: 20px; border-radius: 4px; background: #fff; }
+@media (hover: none) { .banner-arrow { display: none; } }
+@media (prefers-reduced-motion: reduce) { .banner-track { transition: none; } }
+@media (max-width: 720px) { .banner-slideshow { margin-top: 32px; border-radius: 16px; } }
+
+/* Admin banner manager */
+.admin-banner-layout { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 18px; align-items: start; }
+.admin-banner-form { display: grid; gap: 14px; padding: 18px; }
+.admin-banner-size { margin: 0; padding: 10px 12px; border-radius: 10px; background: #eef5ff; color: var(--blue-dark); font-size: .9rem; }
+.admin-banner-list { display: grid; gap: 14px; }
+.admin-banner-item { display: grid; gap: 10px; padding: 14px; }
+.admin-banner-item img { display: block; width: 100%; aspect-ratio: 1200 / 152; object-fit: cover; border-radius: 10px; background: #eef2f8; }
+.admin-banner-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.admin-banner-actions { display: flex; gap: 8px; }
+@media (max-width: 900px) { .admin-banner-layout { grid-template-columns: 1fr; } }
+
+/* Advertise page */
+.advertise-form { display: grid; gap: 16px; max-width: 640px; padding: 22px; margin-top: 18px; }
+.advertise-days { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.advertise-days input { width: 96px; }
+.advertise-total { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding: 12px 14px; border-radius: 12px; background: #eef5ff; color: var(--blue-dark); }
+.advertise-total strong { font-size: 1.4rem; }
+.advertise-login { max-width: 640px; margin-top: 18px; }
+.advertise-mine { margin-top: 32px; max-width: 640px; }
+.advertise-list { display: grid; gap: 12px; }
+.advertise-list .panel { padding: 14px; }
+.field-error { color: #b91c1c; }
+.admin-banner-price { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; padding: 16px 18px; margin-bottom: 18px; }
+.admin-banner-price .field { flex: 1 1 220px; margin: 0; }
+.admin-banner-price .muted { flex-basis: 100%; margin: 0; }

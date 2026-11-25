@@ -5,6 +5,7 @@ const categoryModel = require('../models/categoryModel')
 const adminModel = require('../models/adminModel')
 const sellerModel = require('../models/sellerModel')
 const messageModel = require('../models/messageModel')
+const { readVerificationFile } = require('../utils/verificationStorage')
 
 function checkValidation(req) {
   const errors = validationResult(req)
@@ -403,17 +404,6 @@ async function listPendingVerifications(req, res) {
 async function getVerificationDocument(req, res) {
   checkValidation(req)
   const documentType = req.params.document || req.query.document || 'identity'
-  const document = await sellerModel.getVerificationDocument(req.params.id, documentType)
-  const file = document ? await readVerificationFile(document) : null
-  if (!file) return sendMissing(res, 'Verification document not found.')
-  const extension = document.split('.').pop()
-  res.set({
-    'Cache-Control': 'private, no-store',
-    'Content-Type': file.contentType,
-    'Content-Disposition': `attachment; filename="verification-document.${extension}"`,
-    'X-Content-Type-Options': 'nosniff',
-  })
-  return res.send(file.data)
 }
 async function moderateVerification(req, res) {
   return reviewVerification(req, res, req.body.status)

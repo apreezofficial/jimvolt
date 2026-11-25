@@ -4,8 +4,6 @@ const categoryModel = require('../models/categoryModel')
 const sellerModel = require('../models/sellerModel')
 const { isValidNigerianPhone, normalizeNigerianPhone } = require('../utils/phone')
 const { normalizeUsername, validateUsername } = require('../utils/slugUtils')
-const { deleteVerificationFiles } = require('../utils/verificationStorage')
-
 function checkValidation(req) {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -24,7 +22,6 @@ function pagination(query) {
 async function removeVerificationUploads(req) {
   const files = Object.values(req.verificationDocuments || {})
   if (!files.length && req.verificationDocumentPath) files.push(req.verificationDocumentPath)
-  await deleteVerificationFiles(files)
 }
 
 function slugify(name, userId) {
@@ -185,9 +182,15 @@ async function submitVerification(req, res) {
     ? { document: req.verificationDocumentPath }
     : {})
   if (!Object.keys(documents).length) {
-    const error = new Error('Attach at least one supporting verification document.')
-    error.statusCode = 400
-    throw error
+    const existing = req.method === 'PUT' ? await sellerModel.getVerification(req.user.id) : null
+    if (
+      existing?.status !== 'information_requested'
+      || !existing.has_identity_document
+    ) {
+      const error = new Error('Attach at least one supporting verification document.')
+      error.statusCode = 400
+      throw error
+    }
   }
   if (!isValidNigerianPhone(req.body.businessPhone)) {
     await removeVerificationUploads(req)
@@ -280,6 +283,12 @@ async function verification(req, res) {
   return res.json({ verification: await sellerModel.getVerification(req.user.id) })
 }
 
+async function createVerificationUploadUrls(req, res) {
+  const uploads = await issueVerificationUploadUrls(req.user.id, req.body?.documents)
+  res.set('Cache-Control', 'private, no-store')
+  return res.json({ uploads })
+}
+
 async function notifications(req, res) {
   return res.json({ notifications: await sellerModel.listNotifications(req.user.id) })
 }
@@ -335,6 +344,7 @@ module.exports = {
   advertisements,
   analytics,
   checkUsername,
+  createVerificationUploadUrls,
   dashboard,
   dateRange,
   duplicateAdvertisement,

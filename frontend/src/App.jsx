@@ -15,6 +15,8 @@ import AdminPage from './pages/AdminPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
 import AdminWorkspacePage from './pages/AdminWorkspacePage.jsx';
+import AdminBannersPage from './pages/AdminBannersPage.jsx';
+import AdvertisePage from './pages/AdvertisePage.jsx';
 import AdminPromotionPackagesPage from './pages/AdminPromotionPackagesPage.jsx';
 import AdminUsersPage from './pages/AdminUsersPage.jsx';
 import AdminVerificationsPage from './pages/AdminVerificationsPage.jsx';
@@ -53,6 +55,7 @@ export default function App() {
           <Route path="reports" element={<AdminWorkspacePage />} />
           <Route path="payments" element={<AdminWorkspacePage />} />
           <Route path="promotion-packages" element={<AdminPromotionPackagesPage />} />
+          <Route path="banners" element={<AdminBannersPage />} />
           <Route path="analytics" element={<AdminWorkspacePage />} />
           <Route path="settings" element={<AdminWorkspacePage />} />
         </Route>
@@ -76,6 +79,7 @@ export default function App() {
           <Route path="/about" element={<InformationPage />} />
           <Route path="/help" element={<InformationPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/advertise" element={<AdvertisePage />} />
           <Route path="/safety" element={<InformationPage />} />
           <Route path="/contact" element={<InformationPage />} />
           <Route path="/terms" element={<InformationPage />} />

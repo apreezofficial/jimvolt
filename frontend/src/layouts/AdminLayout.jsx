@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   BarChart3, BriefcaseBusiness, ChevronLeft, ChevronRight, CreditCard, FileCheck2,
-  Flag, LayoutDashboard, Menu, Settings, ShieldCheck, Tags, Users, X, Megaphone,
+  Flag, GalleryHorizontal, LayoutDashboard, Menu, Settings, ShieldCheck, Tags, Users, X, Megaphone,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import LogoutAction from '../components/LogoutAction.jsx';
@@ -17,6 +17,7 @@ const navigation = [
   { to: '/admin/reports', label: 'Reports', icon: Flag },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard },
   { to: '/admin/promotion-packages', label: 'Promotion packages', icon: Megaphone },
+  { to: '/admin/banners', label: 'Homepage banners', icon: GalleryHorizontal },
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ];

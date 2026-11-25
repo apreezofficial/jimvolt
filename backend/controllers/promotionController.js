@@ -2,6 +2,7 @@ const { randomUUID } = require('node:crypto')
 const { validationResult } = require('express-validator')
 const promotionModel = require('../models/promotionModel')
 const paystackService = require('../services/paystackService')
+const bannerOrderModel = require('../models/bannerOrderModel')
 const { verifyPaystackSignature } = require('../utils/paystackWebhook')
 
 function checkValidation(req) {
@@ -133,12 +134,20 @@ async function webhook(req, res) {
 
   if (event.event === 'charge.failed') {
     await promotionModel.failPendingPaymentByCheckoutId(reference, eventRecord)
+    await bannerOrderModel.failOrder(reference)
     return res.json({ received: true })
   }
   if (event.event !== 'charge.success') return res.json({ received: true })
 
   const payment = await promotionModel.getPaymentByCheckoutId(reference)
-  if (!payment) return res.json({ received: true })
+  if (!payment) {
+    // Not a promotion: it may be a banner order.
+    if (await bannerOrderModel.getOrderByReference(reference)) {
+      const bannerCheckout = await paystackService.getCheckout(reference)
+      await bannerOrderModel.completePayment(reference, bannerCheckout)
+    }
+    return res.json({ received: true })
+  }
   // Confirm with Paystack directly rather than trusting the webhook body alone.
   const checkout = await paystackService.getCheckout(reference)
   await promotionModel.completeVerifiedPayment(reference, checkout, eventRecord)
