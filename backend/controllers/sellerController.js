@@ -1,12 +1,10 @@
-const fs = require('node:fs/promises')
-const path = require('node:path')
 const { validationResult } = require('express-validator')
 const adModel = require('../models/adModel')
 const categoryModel = require('../models/categoryModel')
 const sellerModel = require('../models/sellerModel')
 const { isValidNigerianPhone, normalizeNigerianPhone } = require('../utils/phone')
 const { normalizeUsername, validateUsername } = require('../utils/slugUtils')
-const { privateDirectory } = require('../middleware/verificationUpload')
+const { deleteVerificationFiles } = require('../utils/verificationStorage')
 
 function checkValidation(req) {
   const errors = validationResult(req)
@@ -26,7 +24,7 @@ function pagination(query) {
 async function removeVerificationUploads(req) {
   const files = Object.values(req.verificationDocuments || {})
   if (!files.length && req.verificationDocumentPath) files.push(req.verificationDocumentPath)
-  await Promise.all(files.map((file) => fs.unlink(path.join(privateDirectory, file)).catch(() => {})))
+  await deleteVerificationFiles(files)
 }
 
 function slugify(name, userId) {

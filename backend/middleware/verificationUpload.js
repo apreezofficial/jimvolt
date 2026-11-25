@@ -1,9 +1,6 @@
-const crypto = require('node:crypto')
-const fs = require('node:fs/promises')
-const path = require('node:path')
 const { heicMimeTypes, isHeic, convertHeicToJpeg } = require('../utils/heic')
+const { deleteVerificationFiles, saveVerificationFile } = require('../utils/verificationStorage')
 
-const privateDirectory = path.resolve(__dirname, '../private-verifications')
 const maximumSize = 5 * 1024 * 1024
 const maximumRequestSize = 15 * 1024 * 1024
 const acceptedFields = new Set(['document', 'cacDocument', 'identityDocument', 'additionalDocument'])
@@ -83,18 +80,13 @@ async function parseVerificationUpload(req, res, next) {
       throw uploadError('Attach at least one supporting verification document.')
     }
 
-    await fs.mkdir(privateDirectory, { recursive: true, mode: 0o700 })
     const storedFiles = {}
     try {
       for (const part of parts) {
-        const fileName = `${crypto.randomUUID()}.${part.extension}`
-        await fs.writeFile(path.join(privateDirectory, fileName), part.data, { flag: 'wx', mode: 0o600 })
-        storedFiles[part.name] = fileName
+        storedFiles[part.name] = await saveVerificationFile(part.data, part.extension)
       }
     } catch (error) {
-      await Promise.all(Object.values(storedFiles).map((fileName) =>
-        fs.unlink(path.join(privateDirectory, fileName)).catch(() => {}),
-      ))
+      await deleteVerificationFiles(Object.values(storedFiles))
       throw error
     }
     req.verificationDocuments = storedFiles
@@ -105,4 +97,4 @@ async function parseVerificationUpload(req, res, next) {
   }
 }
 
-module.exports = { parseVerificationUpload, privateDirectory }
+module.exports = { parseVerificationUpload }

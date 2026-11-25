@@ -475,6 +475,14 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Private seller verification documents. Serverless hosts have a read-only disk, so the bytes live here.
+CREATE TABLE IF NOT EXISTS verification_files (
+  name VARCHAR(80) PRIMARY KEY,
+  content_type VARCHAR(100) NOT NULL,
+  data BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Google sign-in: the stable Google account id ("sub") for each linked member.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users (google_sub);
