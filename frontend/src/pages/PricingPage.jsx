@@ -3,6 +3,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import EmptyState from '../components/EmptyState.jsx';
 import { getPromotionPackages } from '../services/promotionService.js';
+import { getBannerPricing } from '../services/bannerService.js';
 
 function formatNaira(amount) {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(Number(amount) || 0);
@@ -22,6 +23,7 @@ function benefitList(value) {
 export default function PricingPage() {
   const [packages, setPackages] = useState(null);
   const [error, setError] = useState('');
+  const [banner, setBanner] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -29,6 +31,10 @@ export default function PricingPage() {
       .then(({ data }) => { if (active) setPackages(data.packages || []); })
       .catch(() => { if (active) setError('Pricing could not be loaded right now. Please try again shortly.'); });
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    getBannerPricing().then(({ data }) => setBanner(data)).catch(() => {});
   }, []);
 
   return (
@@ -64,6 +70,15 @@ export default function PricingPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {banner && (
+        <article className="panel pricing-card" style={{ marginTop: 18 }}>
+          <h2>Homepage banner</h2>
+          <p className="pricing-price">{formatNaira(banner.pricePerDay)} <small>per day</small></p>
+          <p>Your banner rotates in the slideshow at the top of the homepage. Choose from {banner.minDays} to {banner.maxDays} days: the more days, the more you pay. Days start when we approve your banner.</p>
+          <Link className="btn btn-primary" to="/advertise">Order a banner</Link>
+        </article>
       )}
 
       <p className="section-footer">

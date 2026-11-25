@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Eye, EyeOff, Pencil, Plus, Trash2, X } from 'lucide-react';
-import { BANNER_SIZE, deleteAdminBanner, getAdminBannerImage, getAdminBanners, saveAdminBanner } from '../services/bannerService.js';
+import { Check, Eye, EyeOff, Pencil, Plus, Trash2, X } from 'lucide-react';
+import {
+  BANNER_SIZE, approveAdminBanner, deleteAdminBanner, getAdminBannerImage, getAdminBannerSettings, getAdminBanners,
+  rejectAdminBanner, saveAdminBanner, saveAdminBannerSettings,
+} from '../services/bannerService.js';
+import { formatNaira } from '../utils/format.js';
 
 const emptyForm = { title: '', advertiser: '', linkUrl: '', altText: '', sortOrder: '0', isActive: true, startsAt: '', endsAt: '' };
 
@@ -14,6 +18,20 @@ function toLocalInput(value) {
 
 function messageFrom(error, fallback) {
   return error.response?.data?.message || fallback;
+}
+
+const STATUS_LABELS = {
+  pending_payment: 'Waiting for payment',
+  pending_review: 'Paid, needs review',
+  active: 'Approved',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+};
+
+function statusLabel(banner) {
+  if (banner.is_expired) return 'Finished (days used up)';
+  if (banner.is_live) return 'Live';
+  return STATUS_LABELS[banner.status] || banner.status;
 }
 
 function BannerPreview({ id, version }) {
@@ -42,6 +60,8 @@ export default function AdminBannersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [pricePerDay, setPricePerDay] = useState('');
+  const [savingPrice, setSavingPrice] = useState(false);
   const fileInput = useRef(null);
 
   const load = () => getAdminBanners()
@@ -49,7 +69,50 @@ export default function AdminBannersPage() {
     .catch((requestError) => setError(messageFrom(requestError, 'Could not load banners.')))
     .finally(() => setLoading(false));
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    getAdminBannerSettings().then(({ data }) => setPricePerDay(String(data.pricePerDay))).catch(() => {});
+  }, []);
+
+  const savePrice = async (event) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    setSavingPrice(true);
+    try {
+      const { data } = await saveAdminBannerSettings(pricePerDay);
+      setPricePerDay(String(data.pricePerDay));
+      setNotice(`Banner price saved: ${formatNaira(Number(data.pricePerDay))} per day.`);
+    } catch (requestError) {
+      setError(messageFrom(requestError, 'Could not save the price.'));
+    } finally {
+      setSavingPrice(false);
+    }
+  };
+
+  const approve = async (banner) => {
+    setError('');
+    try {
+      const { data } = await approveAdminBanner(banner.id);
+      setNotice(data.message);
+      await load();
+    } catch (requestError) {
+      setError(messageFrom(requestError, 'Could not approve the banner.'));
+    }
+  };
+
+  const reject = async (banner) => {
+    const note = window.prompt(`Why can't "${banner.title}" be approved? The advertiser will see this.`);
+    if (!note) return;
+    setError('');
+    try {
+      const { data } = await rejectAdminBanner(banner.id, note.trim());
+      setNotice(data.message);
+      await load();
+    } catch (requestError) {
+      setError(messageFrom(requestError, 'Could not reject the banner.'));
+    }
+  };
 
   const reset = () => {
     setForm(emptyForm);
@@ -156,6 +219,15 @@ export default function AdminBannersPage() {
       {error && <div className="notice error" role="alert">{error}</div>}
       {notice && <div className="notice success" role="status">{notice}</div>}
 
+      <form className="panel admin-banner-price" onSubmit={savePrice}>
+        <label className="field">
+          <span>Price per day for advertisers (NGN)</span>
+          <input type="number" min="1" step="0.01" required value={pricePerDay} onChange={(event) => setPricePerDay(event.target.value)} />
+        </label>
+        <button className="btn btn-primary" type="submit" disabled={savingPrice || !pricePerDay}>Save price</button>
+        <p className="muted">Advertisers pay this times the days they choose, at /advertise. Banners you add here are free.</p>
+      </form>
+
       <div className="admin-banner-layout">
         <form className="panel admin-banner-form" onSubmit={submit}>
           <div className="panel-header">
@@ -195,8 +267,22 @@ export default function AdminBannersPage() {
                     {banner.width} x {banner.height} · order {banner.sort_order}
                     {banner.is_active ? '' : ' · hidden'}
                   </p>
+                  <p className="muted">
+                    {statusLabel(banner)}
+                    {banner.owner_name ? ` · by ${banner.owner_name} (${banner.owner_email})` : ' · added by admin'}
+                    {banner.duration_days ? ` · ${banner.duration_days} days` : ''}
+                    {banner.paid_amount ? ` · paid ${formatNaira(Number(banner.paid_amount))}` : ''}
+                    {banner.ends_at ? ` · ends ${new Date(banner.ends_at).toLocaleDateString()}` : ''}
+                  </p>
+                  {banner.review_note && <p className="muted">Note: {banner.review_note}</p>}
                 </div>
                 <div className="admin-banner-actions">
+                  {banner.status === 'pending_review' && (
+                    <>
+                      <button type="button" className="btn btn-primary" onClick={() => approve(banner)}><Check size={16} /> Approve</button>
+                      <button type="button" className="btn btn-white" onClick={() => reject(banner)}><X size={16} /> Reject</button>
+                    </>
+                  )}
                   <button type="button" className="btn btn-ghost" onClick={() => toggleActive(banner)} aria-label={banner.is_active ? 'Hide banner' : 'Show banner'}>
                     {banner.is_active ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>

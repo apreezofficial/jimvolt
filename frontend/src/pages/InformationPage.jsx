@@ -102,6 +102,7 @@ const pages = {
         heading: 'What this policy covers',
         points: [
           'Promotion packages (Boost, Featured, Premium and Premium Plus) paid through our payment partner, Paystack.',
+          'Homepage banners ordered on the Advertise page, paid for by the day through Paystack. If we cannot approve your banner, we tell you why and refund the payment in full.',
           'It does not cover purchases between buyers and sellers. Jimvolt does not take payment for products, hold buyer funds, or ship goods, so refunds for a product are agreed directly with the seller.',
         ],
       },
