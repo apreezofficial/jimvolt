@@ -48,7 +48,10 @@ const sectionTitles = {
 };
 
 function messageFrom(error, fallback) {
-  return error.response?.data?.message || fallback;
+  // A server answer carries its own message. Errors raised in the browser (a missing setting, a failed
+  // upload, no network) have no response, and their message says what actually went wrong.
+  if (error.response) return error.response.data?.message || fallback;
+  return error.message || fallback;
 }
 
 export default function DashboardPage() {
