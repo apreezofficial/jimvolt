@@ -4,6 +4,11 @@ const categoryModel = require('../models/categoryModel')
 const sellerModel = require('../models/sellerModel')
 const { isValidNigerianPhone, normalizeNigerianPhone } = require('../utils/phone')
 const { normalizeUsername, validateUsername } = require('../utils/slugUtils')
+const {
+  createVerificationUploadUrls: issueVerificationUploadUrls,
+  deleteVerificationFiles,
+} = require('../utils/verificationStorage')
+
 function checkValidation(req) {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -22,6 +27,7 @@ function pagination(query) {
 async function removeVerificationUploads(req) {
   const files = Object.values(req.verificationDocuments || {})
   if (!files.length && req.verificationDocumentPath) files.push(req.verificationDocumentPath)
+  await deleteVerificationFiles(files, req.user?.id)
 }
 
 function slugify(name, userId) {

@@ -1,6 +1,15 @@
+const {
+  acceptedVerificationFields,
+  deleteVerificationFiles,
+  isOwnedVerificationPath,
+  maximumVerificationFileSize,
+  maximumVerificationSubmissionSize,
+  readVerificationFile,
+  uploadVerificationFile,
+} = require('../utils/verificationStorage')
 const { heicMimeTypes, isHeic, convertHeicToJpeg } = require('../utils/heic')
-const { deleteVerificationFiles, saveVerificationFile } = require('../utils/verificationStorage')
 
+const maximumRequestSize = 4 * 1024 * 1024
 
 function uploadError(message, statusCode = 400) {
   const error = new Error(message)
@@ -154,6 +163,34 @@ async function parseLegacyMultipart(req) {
     throw uploadError('Attach at least one supporting verification document.')
   }
 
+  const storedFiles = {}
+  try {
+    for (const part of parts) {
+      const stored = await uploadVerificationFile(req.user?.id, part.data, part.mimeType)
+      storedFiles[part.name] = stored.path
+    }
+  } catch (error) {
+    try {
+      await deleteVerificationFiles(Object.values(storedFiles), req.user?.id)
+    } catch (cleanupError) {
+      console.error('Could not remove verification uploads after a storage failure:', cleanupError.message)
+    }
+    throw error
+  }
+
+  req.verificationDocuments = storedFiles
+  req.verificationDocumentPath = storedFiles.document
+    || storedFiles.identityDocument
+    || Object.values(storedFiles)[0]
+}
+
+async function parseVerificationUpload(req, res, next) {
+  try {
+    const contentType = req.get('content-type') || ''
+    if (/^multipart\/form-data;/i.test(contentType)) {
+      await parseLegacyMultipart(req)
+    } else {
+      await parseStoredDocumentKeys(req)
     }
     next()
   } catch (error) {
@@ -169,3 +206,4 @@ async function parseLegacyMultipart(req) {
   }
 }
 
+module.exports = { detectDocumentType, parseVerificationUpload, validateDocument }

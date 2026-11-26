@@ -1,5 +1,4 @@
 const { validationResult } = require('express-validator')
-const { readVerificationFile } = require('../utils/verificationStorage')
 const adModel = require('../models/adModel')
 const categoryModel = require('../models/categoryModel')
 const adminModel = require('../models/adminModel')
@@ -404,6 +403,26 @@ async function listPendingVerifications(req, res) {
 async function getVerificationDocument(req, res) {
   checkValidation(req)
   const documentType = req.params.document || req.query.document || 'identity'
+  const filePath = await sellerModel.getVerificationDocument(req.params.id, documentType)
+  if (!filePath) {
+    return sendMissing(res, 'Verification document not found.')
+  }
+  const { data } = await readVerificationFile(filePath)
+  const extension = filePath.split('.').pop().toLowerCase()
+  const contentType = {
+    pdf: 'application/pdf',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif',
+  }[extension]
+  if (!contentType) return sendMissing(res, 'Verification document not found.')
+  res.set('Cache-Control', 'private, no-store')
+  res.set('Content-Type', contentType)
+  res.set('Content-Disposition', `attachment; filename="verification-document.${extension}"`)
+  res.set('X-Content-Type-Options', 'nosniff')
+  return res.send(data)
 }
 async function moderateVerification(req, res) {
   return reviewVerification(req, res, req.body.status)
